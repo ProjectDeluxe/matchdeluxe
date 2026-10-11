@@ -5,11 +5,15 @@
 //   2. Cuando el celu inserta un comando `mark_moment` (botón 20s/40s/1min del control),
 //      le pide a OBS por WebSocket que guarde el Replay Buffer.
 //   3. Recorta con ffmpeg los últimos N segundos pedidos.
-//   4. Sirve una página local (replay-display.html) para la tele conectada por HDMI
-//      a esta PC: muestra la mesa en vivo todo el tiempo (desde la cámara virtual
-//      de OBS) y, cuando hay una repetición nueva, la pasa en esa misma pantalla
-//      y vuelve solo al vivo. En Windows el agente abre esa página solo, en
-//      pantalla completa.
+//   4. Muestra la tele conectada por HDMI a esta PC: la mesa en vivo todo el
+//      tiempo y, cuando hay una repetición nueva, la pasa en esa misma pantalla
+//      y vuelve sola al vivo. Dos formas (TELE_MODO en el .env):
+//      - "obs" (por defecto, lo más liviano): un proyector de OBS a pantalla
+//        completa con una escena "PoolApp Tele" que el agente arma solo. La
+//        repetición es una fuente de video de OBS que se prende y se apaga.
+//      - "navegador": una página local (replay-display.html) en Chrome que toma
+//        el vivo de la cámara virtual de OBS. Más pesado: la PC dibuja el
+//        video dos veces (OBS y Chrome).
 //   5. Cuando llega un `save_clip` (botón "Guardar clip" del control), hace lo mismo
 //      pero en vez de mostrarlo en la tele lo sube a Supabase Storage (bucket `clips`)
 //      y crea la fila en la tabla `clips`, así aparece en el perfil de los jugadores.
@@ -35,7 +39,18 @@ const TABLE_ID = (process.env.TABLE_ID || "").trim();
 const OBS_WS_URL = process.env.OBS_WS_URL || "ws://127.0.0.1:4455";
 const OBS_WS_PASSWORD = process.env.OBS_WS_PASSWORD || undefined;
 const PORT = Number(process.env.PORT || 5051);
-// Abrir la pantalla de la tele al arrancar (solo Windows). ABRIR_TELE=0 lo desactiva.
+// Cómo se muestra la tele: "obs" (proyector de OBS) o "navegador" (Chrome + cámara virtual)
+const TV_MODE = (process.env.TELE_MODO || "obs").trim().toLowerCase() === "navegador" ? "browser" : "obs";
+// Modo obs: escena con la cámara de la mesa (vacío = la que esté en el Programa
+// al conectar) y pantalla del proyector (vacío = la última, la tele si hay dos).
+const LIVE_SCENE = (process.env.ESCENA_MESA || "").trim();
+const TV_MONITOR = (process.env.TELE_MONITOR || "").trim();
+const TV_SCENE = "PoolApp Tele";
+const REPLAY_INPUT = "PoolApp Repetición";
+const REPLAY_LABEL = "PoolApp Cartel repetición";
+const LIVE_LABEL = "PoolApp Cartel en vivo";
+const REPLAYS_DIR = path.join(os.tmpdir(), "poolappdeluxe-replays");
+// Modo navegador: abrir la pantalla de la tele al arrancar (solo Windows). ABRIR_TELE=0 lo desactiva.
 const OPEN_DISPLAY = (process.env.ABRIR_TELE || "1").trim() !== "0";
 // Posición de la ventana de la tele, por ejemplo "1920,0" si la tele es la segunda pantalla.
 const DISPLAY_POSITION = (process.env.TELE_POSICION || "").trim();
@@ -67,6 +82,13 @@ async function connectOBS() {
     obsConnected = true;
     console.log("✅ Conectado a OBS WebSocket en", OBS_WS_URL);
     await ensureOBSOutputs();
+    if (TV_MODE === "obs") {
+      try {
+        await setupObsTv();
+      } catch (err) {
+        console.error("⚠️  No pude armar la tele en OBS:", err.message);
+      }
+    }
   } catch (err) {
     obsConnected = false;
     console.error("❌ No se pudo conectar a OBS (¿está abierto? ¿activaste el WebSocket Server en Herramientas?):", err.message);
@@ -86,8 +108,8 @@ obs.on("ConnectionClosed", () => {
   setTimeout(connectOBS, 5000);
 });
 
-// La repetición necesita el Replay Buffer corriendo, y el vivo de la tele toma la
-// imagen de la cámara virtual de OBS. Si alguno está apagado, se prende solo.
+// La repetición necesita el Replay Buffer corriendo y, en modo navegador, el vivo
+// de la tele toma la imagen de la cámara virtual de OBS. Si están apagados, se prenden solos.
 async function ensureOBSOutputs() {
   try {
     const { outputActive } = await obs.call("GetReplayBufferStatus");
@@ -99,6 +121,7 @@ async function ensureOBSOutputs() {
     console.error("⚠️  No pude iniciar el buffer de repetición de OBS:", err.message);
     console.error("   Revisá: Configuración → Salida → pestaña 'Buffer de repetición' → activado.");
   }
+  if (TV_MODE !== "browser") return;
   try {
     const { outputActive } = await obs.call("GetVirtualCamStatus");
     if (!outputActive) {
@@ -110,6 +133,166 @@ async function ensureOBSOutputs() {
     console.error("   Probá apretando 'Iniciar cámara virtual' en OBS (hace falta OBS 26.1 o más nuevo).");
   }
 }
+
+// ---------- Tele en modo obs ----------
+// Escena "PoolApp Tele" (de abajo hacia arriba): la escena de la mesa (el vivo),
+// la repetición a pantalla completa y los dos carteles. Se muestra en un
+// proyector de OBS a pantalla completa. La grabación sigue saliendo de la escena
+// de la mesa, así que las repeticiones no quedan grabadas adentro de los clips.
+
+async function sceneItemId(sourceName) {
+  const { sceneItemId } = await obs.call("GetSceneItemId", { sceneName: TV_SCENE, sourceName });
+  return sceneItemId;
+}
+
+async function setItemEnabled(sourceName, enabled) {
+  await obs.call("SetSceneItemEnabled", {
+    sceneName: TV_SCENE,
+    sceneItemId: await sceneItemId(sourceName),
+    sceneItemEnabled: enabled,
+  });
+}
+
+async function setReplayVisible(visible) {
+  await setItemEnabled(REPLAY_INPUT, visible);
+  await setItemEnabled(REPLAY_LABEL, visible);
+  await setItemEnabled(LIVE_LABEL, !visible);
+}
+
+// Crea la fuente si no existe y se asegura de que esté en la escena de la tele
+async function ensureTvInput(inputName, inputKind, inputSettings, existingInputs, sceneSources) {
+  if (!existingInputs.includes(inputName)) {
+    await obs.call("CreateInput", { sceneName: TV_SCENE, inputName, inputKind, inputSettings, sceneItemEnabled: false });
+  } else if (!sceneSources.includes(inputName)) {
+    await obs.call("CreateSceneItem", { sceneName: TV_SCENE, sourceName: inputName, sceneItemEnabled: false });
+  }
+}
+
+async function setupObsTv() {
+  fs.mkdirSync(REPLAYS_DIR, { recursive: true });
+
+  const { scenes, currentProgramSceneName } = await obs.call("GetSceneList");
+  const sceneNames = scenes.map((sc) => sc.sceneName);
+  const liveScene = LIVE_SCENE
+    || (currentProgramSceneName !== TV_SCENE ? currentProgramSceneName : sceneNames.find((n) => n !== TV_SCENE));
+  if (!liveScene || !sceneNames.includes(liveScene)) {
+    throw new Error(`no encuentro la escena de la mesa "${liveScene || ""}" (revisá ESCENA_MESA en el .env)`);
+  }
+  if (!sceneNames.includes(TV_SCENE)) await obs.call("CreateScene", { sceneName: TV_SCENE });
+
+  const { sceneItems } = await obs.call("GetSceneItemList", { sceneName: TV_SCENE });
+  const sceneSources = sceneItems.map((i) => i.sourceName);
+  const { inputs } = await obs.call("GetInputList");
+  const inputNames = inputs.map((i) => i.inputName);
+
+  // El vivo: la escena de la mesa adentro de la de la tele (comparten la cámara)
+  if (!sceneSources.includes(liveScene)) {
+    await obs.call("CreateSceneItem", { sceneName: TV_SCENE, sourceName: liveScene, sceneItemEnabled: true });
+  }
+
+  await ensureTvInput(REPLAY_INPUT, "ffmpeg_source", {
+    is_local_file: true,
+    local_file: "",
+    looping: false,
+    restart_on_activate: true,
+    close_when_inactive: true,
+  }, inputNames, sceneSources);
+
+  const { inputKinds } = await obs.call("GetInputKindList");
+  const textKind = inputKinds.find((k) => k.startsWith("text_gdiplus")) || inputKinds.find((k) => k.startsWith("text_ft2"));
+  const { baseWidth, baseHeight } = await obs.call("GetVideoSettings");
+  const fontSize = Math.round(baseHeight / 18);
+  // Colores en formato de OBS (0xAABBGGRR): rojo #e53935 y negro semitransparente
+  const label = (text, bg) => ({ text, font: { face: "Arial", size: fontSize, style: "Bold", flags: 1 }, color: 0xffffffff, bk_color: bg, bk_opacity: 85 });
+  if (textKind) {
+    await ensureTvInput(REPLAY_LABEL, textKind, label(" REPETICIÓN ", 0xff3539e5), inputNames, sceneSources);
+    await ensureTvInput(LIVE_LABEL, textKind, label(" ● EN VIVO ", 0xff000000), inputNames, sceneSources);
+  }
+
+  // La repetición ocupa toda la pantalla; los carteles van arriba a la izquierda
+  await obs.call("SetSceneItemTransform", {
+    sceneName: TV_SCENE,
+    sceneItemId: await sceneItemId(REPLAY_INPUT),
+    sceneItemTransform: {
+      positionX: 0, positionY: 0, alignment: 5,
+      boundsType: "OBS_BOUNDS_SCALE_INNER", boundsAlignment: 0, boundsWidth: baseWidth, boundsHeight: baseHeight,
+    },
+  });
+  if (textKind) {
+    const margin = Math.round(baseHeight * 0.04);
+    for (const name of [REPLAY_LABEL, LIVE_LABEL]) {
+      await obs.call("SetSceneItemTransform", {
+        sceneName: TV_SCENE,
+        sceneItemId: await sceneItemId(name),
+        sceneItemTransform: { positionX: margin, positionY: margin, alignment: 5 },
+      });
+    }
+  }
+
+  // El sonido de la repetición sale por los parlantes de la PC, sin entrar a la grabación
+  try {
+    await obs.call("SetInputAudioMonitorType", { inputName: REPLAY_INPUT, monitorType: "OBS_MONITORING_TYPE_MONITOR_ONLY" });
+  } catch (err) {
+    console.error("⚠️  No pude mandar el sonido de la repetición a los parlantes:", err.message);
+  }
+
+  if (textKind) await setReplayVisible(false);
+  else await setItemEnabled(REPLAY_INPUT, false);
+
+  const { monitors } = await obs.call("GetMonitorList");
+  const monitorIndex = TV_MONITOR !== "" ? Number(TV_MONITOR) : (monitors.length ? monitors[monitors.length - 1].monitorIndex : 0);
+  await obs.call("OpenSourceProjector", { sourceName: TV_SCENE, monitorIndex });
+  console.log(`📺 Tele lista: proyector de OBS en la pantalla ${monitorIndex}, vivo de la escena "${liveScene}" (para cerrarlo: Esc).`);
+}
+
+let replayToken = 0;
+
+async function showReplayInObs(savedPath, seconds) {
+  const token = ++replayToken;
+  const file = path.join(REPLAYS_DIR, `replay-${Date.now()}.mp4`);
+  try {
+    await trimLastSeconds(savedPath, seconds, file);
+  } catch (err) {
+    console.error("⚠️  No pude recortar con ffmpeg (¿está instalado y en el PATH?), muestro el buffer completo:", err.message);
+    fs.copyFileSync(savedPath, file);
+  }
+
+  try {
+    await obs.call("SetInputSettings", { inputName: REPLAY_INPUT, inputSettings: { local_file: file } });
+    await setReplayVisible(true);
+    await obs.call("TriggerMediaInputAction", { inputName: REPLAY_INPUT, mediaAction: "OBS_WEBSOCKET_MEDIA_INPUT_ACTION_RESTART" });
+    console.log("✅ Repetición en la tele");
+  } catch (err) {
+    console.error("❌ No pude pasar la repetición en OBS:", err.message);
+    return;
+  }
+
+  // Por si OBS no avisa que terminó: vuelve al vivo un rato después del final
+  setTimeout(() => {
+    if (token === replayToken) setReplayVisible(false).catch(() => {});
+  }, (seconds + 5) * 1000);
+
+  // Las repeticiones viejas se borran (la que se está mostrando no). Si OBS
+  // todavía tiene alguna abierta, queda para la próxima.
+  for (const name of fs.readdirSync(REPLAYS_DIR)) {
+    const old = path.join(REPLAYS_DIR, name);
+    if (old === file) continue;
+    try {
+      fs.rmSync(old, { force: true });
+    } catch {
+      // archivo en uso
+    }
+  }
+}
+
+obs.on("MediaInputPlaybackEnded", ({ inputName }) => {
+  if (TV_MODE === "obs" && inputName === REPLAY_INPUT) {
+    replayToken++;
+    setReplayVisible(false).catch((err) => console.error("⚠️  No pude volver al vivo:", err.message));
+  }
+});
+
+// ---------- Tele en modo navegador ----------
 
 // Busca Chrome o Edge en las carpetas de instalación habituales de Windows.
 function findBrowser() {
@@ -124,7 +307,7 @@ function findBrowser() {
 // propio para que los permisos de abajo valgan aunque haya otro Chrome abierto:
 // autoplay con sonido para las repeticiones y permiso de cámara sin preguntar.
 function openDisplay(url) {
-  if (!OPEN_DISPLAY || process.platform !== "win32") return;
+  if (TV_MODE !== "browser" || !OPEN_DISPLAY || process.platform !== "win32") return;
   const browser = findBrowser();
   if (!browser) {
     console.log("ℹ️  No encontré Chrome ni Edge para abrir la tele solo; abrí la dirección de arriba a mano.");
@@ -282,6 +465,8 @@ obs.on("ReplayBufferSaved", async (data) => {
 
   if (job.kind === "clip") {
     await uploadClip(savedPath, job.seconds, job.clipId);
+  } else if (TV_MODE === "obs") {
+    await showReplayInObs(savedPath, job.seconds);
   } else {
     await showReplay(savedPath, job.seconds);
   }
@@ -415,6 +600,7 @@ async function main() {
   app.get("/status", (req, res) => res.json({ lastUpdate }));
   const displayUrl = `http://localhost:${PORT}/replay-display.html`;
   app.listen(PORT, () => {
+    if (TV_MODE !== "browser") return;
     console.log(`\n🖥  Pantalla de la tele (vivo + repeticiones):\n   ${displayUrl}\n`);
     openDisplay(displayUrl);
   });

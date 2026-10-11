@@ -29,8 +29,11 @@ PASOS (una sola vez):
      Tiempo maximo de repeticion = 60 segundos.
    - Herramientas -> "WebSocket Server Settings" -> activar el servidor.
      Anotar el puerto (por defecto 4455) y la contraseña si le pusiste una.
-   - El buffer y la camara virtual los prende solo el agente (paso 5).
-     La camara virtual es de donde la tele toma la imagen en vivo.
+   - El buffer lo prende solo el agente (paso 5). Dejar en el Programa
+     la escena con la camara de la mesa.
+   - Para que no se trabe: Configuracion -> Salida -> Codificador
+     "QuickSync" (o NVENC / AMF, el que diga hardware), y en Video la
+     salida en 1280x720 a 30 fps.
 
 4. En esta carpeta: copiar el archivo ".env.example", renombrar la copia a
    ".env", y abrirlo con el Bloc de notas. Completar:
@@ -46,11 +49,9 @@ PASOS (una sola vez):
    La primera vez va a tardar un par de minutos instalando. Dejar esa
    ventana negra abierta — mientras este abierta, el sistema funciona.
 
-6. La pantalla de la tele se abre sola a pantalla completa (Chrome o Edge)
-   y muestra la mesa EN VIVO. Para salir de la pantalla completa: Alt+F4.
-   Si no se abre, abrir a mano en el navegador de esta PC:
-       http://localhost:5051/replay-display.html
-   y poner pantalla completa (F11).
+6. La tele se abre sola: es un proyector de OBS a pantalla completa que
+   muestra la mesa EN VIVO (va a la ultima pantalla, la tele si hay dos).
+   Para cerrarlo: Esc. Si no aparece, el motivo esta en la ventana negra.
 
 LISTO. Para probar: desde el celu, entra a la partida (por el link de
 Vercel o escaneando el QR) y toca un boton de repeticion. En unos segundos

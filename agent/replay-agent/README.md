@@ -6,7 +6,7 @@ Esto corre en la PC que tiene la cámara y OBS conectados a la mesa de pool — 
 
 1. Abrí OBS con la cámara de la mesa ya agregada como fuente en una escena.
 2. **Activar el Replay Buffer:** Configuración → Salida → pestaña "Buffer de repetición". Activalo, y poné el "Tiempo máximo de repetición" en **60 segundos** (así cubre los tres botones — 20s/40s/1min — recortando después). Aplicá.
-3. No hace falta iniciar a mano ni el buffer ni la cámara virtual: el agente los prende solo al conectarse a OBS. La cámara virtual (OBS 26.1 o más nuevo) es de donde la tele toma la imagen en vivo, porque la cámara física ya la tiene ocupada OBS.
+3. No hace falta iniciar a mano el buffer: el agente lo prende solo al conectarse a OBS. Tampoco hace falta armar nada para la tele: el agente crea en OBS la escena "PoolApp Tele" (ver paso 4). Dejá en el Programa la escena con la cámara de la mesa.
 4. **Activar el WebSocket:** Herramientas → "WebSocket Server Settings" (o "Configuración del servidor WebSocket"). Activá el servidor. Anotá el puerto (por defecto `4455`) y, si le pusiste contraseña, anotala también — van al `.env`.
 
 ## 2. Preparar esta carpeta en esa PC
@@ -34,20 +34,20 @@ Si todo está bien vas a ver algo como:
 
 ```
 ✅ Conectado a OBS WebSocket en ws://127.0.0.1:4455
+📺 Tele lista: proyector de OBS en la pantalla 1, vivo de la escena "Mesa" (para cerrarlo: Esc).
 Supabase Realtime: SUBSCRIBED
-🖥  Abrí esto en el navegador de la tele, en pantalla completa:
-   http://localhost:5051/replay-display.html
 ```
 
 ## 4. La tele
 
-En Windows el agente abre solo la pantalla de la tele en Chrome (o Edge) a pantalla completa, con un perfil propio que ya tiene permiso para la cámara y para reproducir con sonido. Para salir de la pantalla completa: Alt+F4. Si la tele es una segunda pantalla, poné su posición en `TELE_POSICION` (por ejemplo `1920,0`); si preferís abrirla a mano, `ABRIR_TELE=0` y abrí:
+La tele muestra la mesa **en vivo** todo el tiempo, con el cartel "● EN VIVO". Cuando alguien pide una repetición, la pasa ahí mismo con el cartel "REPETICIÓN" y, al terminar, vuelve sola al vivo.
 
-```
-http://localhost:5051/replay-display.html
-```
+Por defecto (`TELE_MODO=obs`) la tele es un **proyector de OBS a pantalla completa**, que el agente abre solo al conectarse. Muestra una escena "PoolApp Tele" que el agente arma solo: adentro tiene la escena de la mesa (el vivo), una fuente de video para la repetición y los dos carteles. Es lo más liviano, porque OBS dibuja la imagen una sola vez. Lo que se graba sigue saliendo de la escena de la mesa, así que las repeticiones no quedan grabadas adentro de los clips.
+- El proyector va a la última pantalla (la tele, si la PC tiene dos). Para elegir otra, poné su número en `TELE_MONITOR` (0 es la principal). Para cerrarlo: Esc.
+- La escena de la mesa es la que esté en el Programa al arrancar el agente. Si querés fijarla, poné su nombre en `ESCENA_MESA`. **No pongas "PoolApp Tele" en el Programa**: se grabarían las repeticiones.
+- El sonido de la repetición sale por los parlantes de la PC (monitoreo de OBS), sin entrar a la grabación.
 
-La pantalla muestra la mesa **en vivo** todo el tiempo, con la etiqueta "EN VIVO". Cuando alguien pide una repetición, hace un corte con cortina, pasa la repetición ahí mismo con la etiqueta "REPETICIÓN" y, al terminar, vuelve sola al vivo. Si no encuentra la cámara virtual, lo dice en pantalla y reintenta cada 5 segundos. Para usar otra cámara, agregá `?cam=` y parte de su nombre a la dirección (por ejemplo `?cam=logitech`).
+La otra opción (`TELE_MODO=navegador`) es la página `http://localhost:5051/replay-display.html` en Chrome, que toma el vivo de la cámara virtual de OBS y tiene una cortina animada entre el vivo y la repetición. Es bastante más pesada (la PC dibuja el video dos veces): en una notebook común traba OBS. En ese modo el agente prende solo la cámara virtual y abre Chrome a pantalla completa (`ABRIR_TELE=0` lo desactiva, `TELE_POSICION` lo manda a una segunda pantalla).
 
 ## 5. Probarlo desde el celu
 
@@ -70,7 +70,9 @@ El clip se sube en 720p y algo más comprimido que la repetición de la tele, pa
 ## Si algo no funciona
 
 - **"OBS no pudo guardar el Replay Buffer"** → el buffer no está activado en Configuración → Salida (paso 1.2), o el WebSocket está desactivado/con otro puerto o contraseña distinta a la del `.env`.
-- **La tele dice "No encuentro obs virtual camera"** → la cámara virtual de OBS no está prendida. El agente intenta prenderla solo; si en la ventana negra aparece "No pude iniciar la cámara virtual", apretá "Iniciar cámara virtual" en OBS. Si la tele muestra el vivo en negro, revisá que el Modo de Estudio esté apagado (la cámara virtual saca el Programa, no la Vista Previa).
+- **No se abre la tele / "No pude armar la tele en OBS"** → el error exacto está en la ventana negra. Lo más común: OBS tiene en el Programa una escena sin la cámara. Poné la escena de la mesa en el Programa (o su nombre en `ESCENA_MESA`) y reiniciá el agente.
+- **OBS se traba** → que grabe con el chip de video y no con el procesador: Configuración → Salida → Codificador "QuickSync" (Intel), "NVENC" (NVIDIA) o "AMF" (AMD), salida en 1280x720 a 30 fps y la cámara en MJPEG. Para cambiar el codificador, cerrá antes el agente y detené el buffer (si no, aparece gris).
+- **Modo navegador: la tele dice "No encuentro obs virtual camera"** → la cámara virtual de OBS no está prendida. El agente intenta prenderla solo; si en la ventana negra aparece "No pude iniciar la cámara virtual", apretá "Iniciar cámara virtual" en OBS.
 - **Se conecta a Supabase pero nunca llega el comando** → revisá que el celu y esta PC compartan el mismo proyecto de Supabase (misma `SUPABASE_URL`), y que estés tocando el botón en la partida correcta.
 - **"No pude crear el clip en la base"** → falta correr la migración de la Fase 2 (paso 6.1).
 - **El agente arranca pero no reacciona a ningún botón** → si pusiste `TABLE_ID`, la partida tiene que estar creada en esa mesa (en "Nueva partida", elegí la mesa en vez de "Sin mesa"). Las partidas sueltas se ignoran cuando hay `TABLE_ID`.

@@ -2,7 +2,7 @@
 
 Documento vivo. Última actualización: 2026-10-11 (Fase 3, vivo + repetición en la tele), a partir de la revisión del código existente y la definición de producto con Agus.
 
-> **Actualización 2026-10-11:** antes de pasar a la Fase 4, Agus pidió dos bloques más de Fase 3. (1) La tele de la mesa muestra la cámara **en vivo** todo el tiempo y la repetición aparece en esa misma pantalla, con un corte tipo canal deportivo, y vuelve sola al vivo; es lo que bloquea salir a probar y ya está hecho en el agente (sección 6.5). (2) Cuentas de club autogestionadas: cualquier cuenta real crea su club, el dueño suma gente, carga de partidos ya jugados sin mesa y RLS de `matches` acotada (sección 6.6; migración nueva a correr en producción antes del push). El backlog que dejó Agus está en 6.7. Fase 3 cuentas en main desde `cb0a269`, con las dos migraciones corridas en producción.
+> **Actualización 2026-10-11:** antes de pasar a la Fase 4, Agus pidió dos bloques más de Fase 3. (1) La tele de la mesa muestra la cámara **en vivo** todo el tiempo y la repetición aparece en esa misma pantalla, con un corte tipo canal deportivo, y vuelve sola al vivo; es lo que bloquea salir a probar y ya está hecho en el agente (sección 6.5). (2) Cuentas de club autogestionadas: cualquier cuenta real crea su club, el dueño suma gente, carga de partidos ya jugados sin mesa y RLS de `matches` acotada (sección 6.6; migración corrida en producción el 2026-10-11 y en main desde `1b76ad0`). La primera prueba del vivo en la notebook de Agus trabó OBS: la tele pasó a ser un proyector de OBS en vez de Chrome (6.5). El backlog que dejó Agus está en 6.7. Fase 3 cuentas en main desde `cb0a269`, con las dos migraciones corridas en producción.
 >
 > **Actualización 2026-10-08:** antes de seguir con el cobro, se define el modelo de cuentas: club, jugador e invitado sobre un solo sistema de permisos. Implementado en código (migración, mesas abiertas con QR fijo, reclamo de jugador por celu con confirmación, panel del club) — ver sección 6.4. Planes y límites (6.3) en main desde el commit `5787987`.
 >
@@ -292,17 +292,30 @@ Esto depende de cosas que todavía no existen (login/panel de club, Fase 1 del m
 - **De dónde sale el vivo:** la cámara física ya la tiene abierta OBS y en Windows una cámara no se puede abrir dos veces. Por eso la tele toma la imagen de la **cámara virtual de OBS** (viene con OBS desde la 26.1), que además muestra exactamente lo que OBS graba. Al conectarse a OBS, el agente prende solo el buffer de repetición y la cámara virtual si estaban apagados.
 - **`replay-display.html`:** la cámara virtual de fondo con la etiqueta "EN VIVO". Cuando el agente avisa que hay una repetición nueva, pasa una cortina con "REPETICIÓN", reproduce el recorte en la misma pantalla con su etiqueta y, al terminar, otra cortina y vuelve al vivo. Si llega otra repetición mientras pasa una, corta a la nueva. Si no encuentra la cámara virtual, lo dice en pantalla y reintenta cada 5 s; si se cierra OBS, vuelve sola cuando OBS vuelve. `?cam=nombre` elige otra cámara.
 - **La ventana de la tele se abre sola:** en Windows el agente abre esa página en Chrome o Edge a pantalla completa (modo kiosco), con un perfil propio que ya tiene permiso de cámara y de reproducir con sonido, así no hay que tocar nada en la tele. `ABRIR_TELE=0` lo desactiva y `TELE_POSICION` la manda a una segunda pantalla.
-- Probado en un navegador headless con una cámara falsa: el vivo se ve, al llegar una repetición corta a ella y al terminar vuelve al vivo. Falta la prueba real con OBS en la PC de la mesa.
+- Probado en un navegador headless con una cámara falsa: el vivo se ve, al llegar una repetición corta a ella y al terminar vuelve al vivo.
+
+**Primera prueba real (2026-10-11): el vivo andaba, pero OBS se trababa.** En la notebook de Agus, con OBS, el agente y la página de la tele en Chrome, la vista previa de OBS se saturaba (es de dibujo, no de grabación: bajar a 720p, MJPEG y QuickSync ayudó poco). Agus confirmó que lo pesado era la página en Chrome: la PC dibujaba el video dos veces (OBS y Chrome, más la cámara virtual en el medio).
+
+**Cambio: la tele es un proyector de OBS (`TELE_MODO=obs`, por defecto).** El agente arma en OBS una escena "PoolApp Tele" y la abre en un proyector a pantalla completa, así OBS dibuja la imagen una sola vez y no hacen falta Chrome ni la cámara virtual:
+- Adentro tiene la escena de la mesa anidada (el vivo), una fuente de video para la repetición y dos carteles de texto, "● EN VIVO" y "REPETICIÓN". La escena de la mesa es la que esté en el Programa al arrancar, o la que diga `ESCENA_MESA`.
+- Al guardar una repetición, el agente la recorta, la carga en esa fuente, la muestra con su cartel y la oculta cuando termina (con un tope por si OBS no avisa). Si llega otra mientras pasa una, corta a la nueva.
+- Lo que se graba sigue saliendo de la escena de la mesa, así que las repeticiones no quedan adentro de los clips. El sonido de la repetición va solo a los parlantes (monitoreo), no a la grabación.
+- El proyector va a la última pantalla o a `TELE_MONITOR`. Se cierra con Esc.
+- No tiene la cortina animada: es un corte directo con cartel.
+- Probado contra un OBS simulado (la secuencia entera de pedidos a OBS, mostrar la repetición y volver al vivo). Falta la prueba con OBS real.
+- `TELE_MODO=navegador` deja la página en Chrome como antes, para una PC con resto.
 
 **Lo que hay que saber en la PC de la mesa:**
-- Para que la tele tome lo nuevo hay que cerrar el agente y la pestaña vieja de la tele, y volver a abrir `iniciar-agente.bat`.
-- El Modo de Estudio de OBS tiene que seguir apagado (ver 3.1): la cámara virtual saca el Programa, no la Vista Previa.
+- Para que tome lo nuevo hay que cerrar el agente (y la ventana vieja de Chrome, si quedó abierta) y volver a abrir `iniciar-agente.bat`. La cámara virtual de OBS ya no hace falta.
+- No poner la escena "PoolApp Tele" en el Programa: se grabarían las repeticiones.
+- El Modo de Estudio de OBS tiene que seguir apagado (ver 3.1).
+- Si una repetición pesada trabara OBS, el próximo paso es que el agente recorte con el chip de video (QuickSync) en vez del procesador.
 
 ### 6.6 Fase 3 — cuentas de club autogestionadas (2026-10-11)
 
 **Pedido de Agus:** hasta acá solo el admin creaba clubs y decía quién los maneja. Pasa a ser autogestionado: cualquier cuenta real (no invitado) crea su club y queda como dueña; el dueño, además del admin, suma gente por celu; se pueden cargar partidos ya jugados sin mesa ni cámara; y `matches` deja la política `auth_write_all` (cualquier logueado escribe cualquier cosa), que nunca se había ajustado.
 
-**Hecho en código:**
+**Hecho (en main desde `1b76ad0`, migración corrida en producción el 2026-10-11):**
 - `supabase/migrations/2026-10-11-fase3-clubs-autogestionados.sql` (idempotente; probada dos veces sobre una base tipo producción y sobre una desde cero, y con los permisos de cada rol):
   - `create_my_club(nombre, dirección, contacto)`: crea el club y la membresía de dueño en la misma transacción. Rechaza invitados.
   - `is_club_owner(club)` y `add_club_member_by_phone` abierta al dueño de ese club, con rol dueño o staff.
@@ -325,7 +338,7 @@ Esto depende de cosas que todavía no existen (login/panel de club, Fase 1 del m
 - **Jugadores "del club":** son los que tienen `players.club_id` de ese club. Un jugador que se registró solo (sin club) no entra en `log_match_result` hasta que exista lo de "socio de más de un club" (backlog, 6.7).
 - Si alguien escanea el QR de una partida suelta ajena con su propia cuenta, no puede mover el marcador salvo que sea uno de los dos jugadores.
 
-**Pendiente:** correr la migración en producción **antes** del push (el código nuevo llama a `create_my_club` y `log_match_result`). Prueba real: crear un club con una cuenta que no sea admin, darle acceso a otro celu como staff, cargar un partido jugado y arrancar una partida por QR como invitado para confirmar que el marcador se mueve.
+**Pendiente:** prueba real: crear un club con una cuenta que no sea admin, darle acceso a otro celu como staff, cargar un partido jugado y arrancar una partida por QR como invitado para confirmar que el marcador se mueve.
 
 ### 6.7 Backlog (pedido de Agus, no bloquea)
 
@@ -343,7 +356,7 @@ Esto depende de cosas que todavía no existen (login/panel de club, Fase 1 del m
 
 ## 7. Próximo paso concreto
 
-**Actualizado 2026-10-11:** Fases 1 y 2 cerradas. Fase 3 en curso: planes y límites (6.3) y modelo de cuentas (6.4) en main y en producción. Vivo + repetición en la misma pantalla hecho en el agente (6.5), falta probarlo con OBS en la mesa. Cuentas de club autogestionadas hechas en código (6.6), falta correr su migración en producción. Después: elegir proveedor de pago, poner precios y sumar el cobro encima de este modelo.
+**Actualizado 2026-10-11:** Fases 1 y 2 cerradas. Fase 3 en curso: planes y límites (6.3) y modelo de cuentas (6.4) en main y en producción. Vivo + repetición en la misma pantalla en main (6.5); la versión con Chrome trabó OBS en la notebook y la tele pasó a ser un proyector de OBS, falta probarlo en la mesa. Cuentas de club autogestionadas en main y en producción (6.6), falta la prueba real con dos cuentas. Después: elegir proveedor de pago, poner precios y sumar el cobro encima de este modelo.
 
 ## 8. Expansión a otros deportes (tenis y lo que siga)
 
