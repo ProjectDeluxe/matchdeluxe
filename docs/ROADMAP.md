@@ -1,6 +1,8 @@
 # PoolAppDeluxe — Roadmap y arquitectura (v1)
 
-Documento vivo. Última actualización: 2026-10-11 (Fase 3, vivo + repetición en la tele), a partir de la revisión del código existente y la definición de producto con Agus.
+Documento vivo. Última actualización: 2026-10-15 (Fase 3, repetición en la tele sin recorte tras la tercera prueba en la mesa), a partir de la revisión del código existente y la definición de producto con Agus.
+
+> **Actualización 2026-10-15:** pruebas en la PC de la mesa de la tele como proyector de OBS (6.5). La segunda (2026-10-11) arregló que la repetición no apareciera y pasó a un recorte sin reprocesar. La tercera (2026-10-12) mostró tiempos muy variables del disco (OBS 2–10 s en guardar, recorte hasta 25,7 s) y cortes de Supabase Realtime. Ahora el agente no recorta: carga el archivo de OBS y salta a los últimos segundos, borra los .mp4 que guarda OBS y recupera los pedidos que llegaron durante un corte de Realtime. Probado con OBS simulado; falta probarlo en la mesa.
 
 > **Actualización 2026-10-11:** antes de pasar a la Fase 4, Agus pidió dos bloques más de Fase 3. (1) La tele de la mesa muestra la cámara **en vivo** todo el tiempo y la repetición aparece en esa misma pantalla, con un corte tipo canal deportivo, y vuelve sola al vivo; es lo que bloquea salir a probar y ya está hecho en el agente (sección 6.5). (2) Cuentas de club autogestionadas: cualquier cuenta real crea su club, el dueño suma gente, carga de partidos ya jugados sin mesa y RLS de `matches` acotada (sección 6.6; migración corrida en producción el 2026-10-11 y en main desde `1b76ad0`). La primera prueba del vivo en la notebook de Agus trabó OBS: la tele pasó a ser un proyector de OBS en vez de Chrome (6.5). El backlog que dejó Agus está en 6.7. Fase 3 cuentas en main desde `cb0a269`, con las dos migraciones corridas en producción.
 >
@@ -305,11 +307,25 @@ Esto depende de cosas que todavía no existen (login/panel de club, Fase 1 del m
 - Probado contra un OBS simulado (la secuencia entera de pedidos a OBS, mostrar la repetición y volver al vivo). Falta la prueba con OBS real.
 - `TELE_MODO=navegador` deja la página en Chrome como antes, para una PC con resto.
 
+**Segunda prueba (2026-10-11, noche): la repetición no aparecía y el recorte trababa OBS.** Dos problemas:
+- La escena "PoolApp Tele" nunca está en el Programa, así que para OBS la fuente de la repetición nunca queda "activa": con "cerrar cuando está inactiva" cerraba el archivo y con "reiniciar al activarse" no lo arrancaba. Se apagaron las dos opciones (también en una fuente que ya existía de antes) y el video arranca al cargarlo; la repetición se hace visible antes de cargar el archivo.
+- El recorte reencodeado con el procesador tardaba muchísimo y le sacaba CPU a OBS mientras grababa. Se pasó a un recorte por copia (`ffmpeg -c copy`, sin reprocesar), con el timer de respaldo en N + 15 s porque el corte arranca en el keyframe anterior. Se sumó un log de cuánto tarda OBS en guardar el buffer.
+- Estos cambios quedaron en una copia suelta del agente en el Escritorio de la PC y recién entraron al repo con lo de la tercera prueba.
+
+**Tercera prueba (2026-10-12): tiempos muy variables.** En la PC de la mesa, OBS tardó entre 2 y 10 s en guardar el buffer, y el recorte por copia tardó 0,9 s, 7,0 s y 25,7 s en tres repeticiones seguidas. Un recorte que solo copia bytes no tarda 25 s por el código: es el disco de la PC (lo más probable, el antivirus u OneDrive revisando cada .mp4 nuevo, más un buffer largo que hace archivos grandes). Además aparecieron cortes intermitentes de Supabase Realtime (`CHANNEL_ERROR` y después `SUBSCRIBED` de nuevo), y un pedido que llega durante el corte se perdía.
+
+**Cambios (en `agent/replay-agent/replay-agent.js`):**
+- **Repetición sin recorte en modo OBS:** el agente carga en la fuente de la tele el archivo que guardó OBS tal cual, consulta a OBS cada 100 ms (tope 3 s) hasta saber cuánto dura y salta a los últimos N segundos. Ya no escribe ningún archivo nuevo, así que no depende de cuánto tarde el disco en copiar. Puede verse un instante el principio del buffer antes del salto. Si OBS no dice la duración en 3 s, la pasa desde el principio y lo avisa en el log. El log ahora dice cuánto tardó en estar en la tele. El timer de respaldo para volver al vivo arranca después del salto (N + 5 s; sin salto, 90 s). El modo navegador y los clips siguen recortando con ffmpeg como antes.
+- **Limpieza de los .mp4 de OBS:** antes los archivos que guarda OBS no se borraban nunca y llenaban la carpeta de grabaciones. Ahora, al pasar una repetición nueva, se borran las anteriores (nunca la que está en la tele; si OBS todavía tiene una abierta, queda para la próxima), y el archivo de un clip se borra al terminar de subirlo. Solo se borran archivos que OBS le avisó al agente que guardó.
+- **Pedidos perdidos durante un corte de Realtime:** cada vez que el canal vuelve a `SUBSCRIBED`, el agente busca en `realtime_commands` los `mark_moment` y `save_clip` sin procesar de los últimos 30 s y los pasa en orden. Recuerda los ids ya manejados, así un pedido que llega por las dos vías no se hace dos veces. Depende de que el reloj de la PC esté bien (compara con `created_at` de la base).
+- Probado contra un OBS y un Supabase simulados: carga del archivo, espera de la duración y salto, una repetición que pisa a otra antes del salto, sin duración (pasa desde el principio), timer de respaldo después del salto, vuelta al vivo, borrado de archivos (incluido uno "en uso"), clip, y pedidos recuperados sin repetir. Falta la prueba con OBS real: sobre todo confirmar que el salto en el archivo recién guardado se ve bien y cuánto dura el instante del principio del buffer.
+
 **Lo que hay que saber en la PC de la mesa:**
 - Para que tome lo nuevo hay que cerrar el agente (y la ventana vieja de Chrome, si quedó abierta) y volver a abrir `iniciar-agente.bat`. La cámara virtual de OBS ya no hace falta.
 - No poner la escena "PoolApp Tele" en el Programa: se grabarían las repeticiones.
 - El Modo de Estudio de OBS tiene que seguir apagado (ver 3.1).
-- Si una repetición pesada trabara OBS, el próximo paso es que el agente recorte con el chip de video (QuickSync) en vez del procesador.
+- En OBS, Configuración → Salida → Buffer de repetición: poner el **Tiempo máximo en ~65 s** (cubre el botón de 1 minuto con un poco de margen; más largo hace archivos más grandes y más lentos de guardar).
+- Si OBS sigue tardando varios segundos en guardar el buffer, excluir la carpeta de grabaciones de OBS del antivirus (Windows Defender → Exclusiones) y sacarla de OneDrive (que no esté en Documentos/Videos sincronizados).
 
 ### 6.6 Fase 3 — cuentas de club autogestionadas (2026-10-11)
 
@@ -356,7 +372,7 @@ Esto depende de cosas que todavía no existen (login/panel de club, Fase 1 del m
 
 ## 7. Próximo paso concreto
 
-**Actualizado 2026-10-11:** Fases 1 y 2 cerradas. Fase 3 en curso: planes y límites (6.3) y modelo de cuentas (6.4) en main y en producción. Vivo + repetición en la misma pantalla en main (6.5); la versión con Chrome trabó OBS en la notebook y la tele pasó a ser un proyector de OBS, falta probarlo en la mesa. Cuentas de club autogestionadas en main y en producción (6.6), falta la prueba real con dos cuentas. Después: elegir proveedor de pago, poner precios y sumar el cobro encima de este modelo.
+**Actualizado 2026-10-15:** Fases 1 y 2 cerradas. Fase 3 en curso: planes y límites (6.3) y modelo de cuentas (6.4) en main y en producción. Vivo + repetición en la misma pantalla en main (6.5); la tele es un proyector de OBS y ya se probó en la mesa: la repetición ahora sale sin recorte (salta al final del archivo de OBS) y el agente recupera pedidos perdidos por cortes de Realtime, falta volver a probarlo en la mesa con el buffer en ~65 s. Cuentas de club autogestionadas en main y en producción (6.6), falta la prueba real con dos cuentas. Después: elegir proveedor de pago, poner precios y sumar el cobro encima de este modelo.
 
 ## 8. Expansión a otros deportes (tenis y lo que siga)
 

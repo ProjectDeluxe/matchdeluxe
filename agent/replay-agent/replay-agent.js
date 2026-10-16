@@ -4,7 +4,8 @@
 //   1. Escucha en Supabase Realtime la tabla `realtime_commands`.
 //   2. Cuando el celu inserta un comando `mark_moment` (botón 20s/40s/1min del control),
 //      le pide a OBS por WebSocket que guarde el Replay Buffer.
-//   3. Recorta con ffmpeg los últimos N segundos pedidos.
+//   3. Se queda con los últimos N segundos pedidos: en modo "obs" carga el
+//      archivo que guardó OBS y salta al final; en modo "navegador" lo recorta con ffmpeg.
 //   4. Muestra la tele conectada por HDMI a esta PC: la mesa en vivo todo el
 //      tiempo y, cuando hay una repetición nueva, la pasa en esa misma pantalla
 //      y vuelve sola al vivo. Dos formas (TELE_MODO en el .env):
@@ -169,7 +170,12 @@ async function ensureTvInput(inputName, inputKind, inputSettings, existingInputs
 }
 
 async function setupObsTv() {
-  fs.mkdirSync(REPLAYS_DIR, { recursive: true });
+  // Las versiones anteriores dejaban los recortes en esta carpeta; ya no se usa.
+  try {
+    fs.rmSync(REPLAYS_DIR, { recursive: true, force: true });
+  } catch {
+    // algún archivo en uso: no pasa nada, es una carpeta temporal
+  }
 
   const { scenes, currentProgramSceneName } = await obs.call("GetSceneList");
   const sceneNames = scenes.map((sc) => sc.sceneName);
@@ -190,13 +196,13 @@ async function setupObsTv() {
     await obs.call("CreateSceneItem", { sceneName: TV_SCENE, sourceName: liveScene, sceneItemEnabled: true });
   }
 
-  await ensureTvInput(REPLAY_INPUT, "ffmpeg_source", {
-    is_local_file: true,
-    local_file: "",
-    looping: false,
-    restart_on_activate: true,
-    close_when_inactive: true,
-  }, inputNames, sceneSources);
+  // La escena de la tele no está en el Programa, así que para OBS esta fuente
+  // nunca queda "activa": con "cerrar cuando está inactiva" o "reiniciar al
+  // activarse" no abriría el archivo. Se apagan las dos (también en una fuente
+  // que ya existía de una versión anterior) y el video arranca al cargarlo.
+  const replaySettings = { is_local_file: true, looping: false, restart_on_activate: false, close_when_inactive: false };
+  await ensureTvInput(REPLAY_INPUT, "ffmpeg_source", { ...replaySettings, local_file: "" }, inputNames, sceneSources);
+  await obs.call("SetInputSettings", { inputName: REPLAY_INPUT, inputSettings: replaySettings });
 
   const { inputKinds } = await obs.call("GetInputKindList");
   const textKind = inputKinds.find((k) => k.startsWith("text_gdiplus")) || inputKinds.find((k) => k.startsWith("text_ft2"));
@@ -246,43 +252,91 @@ async function setupObsTv() {
 }
 
 let replayToken = 0;
+// Archivo que se está mostrando en la tele (el que guardó OBS) y los que OBS
+// guardó para repeticiones anteriores, que quedan por borrar.
+let replayOnTv = null;
+const oldReplayFiles = new Set();
 
+// Cuánto esperar a que OBS abra el archivo y diga cuánto dura
+const DURATION_WAIT_MS = 3000;
+const DURATION_POLL_MS = 100;
+// Tope para volver al vivo si no se pudo saltar y pasa el buffer entero
+// (el buffer de la mesa es de ~65s, ver ROADMAP 6.5)
+const FULL_BUFFER_FALLBACK_MS = 90 * 1000;
+
+// Espera a que OBS sepa la duración del archivo cargado (o se acabe el tope, o
+// llegue otra repetición). Devuelve la duración en ms, o null.
+async function waitMediaDuration(token) {
+  const until = Date.now() + DURATION_WAIT_MS;
+  while (Date.now() < until && token === replayToken) {
+    try {
+      const { mediaDuration } = await obs.call("GetMediaInputStatus", { inputName: REPLAY_INPUT });
+      if (mediaDuration > 0) return mediaDuration;
+    } catch {
+      // OBS todavía está abriendo el archivo
+    }
+    await new Promise((r) => setTimeout(r, DURATION_POLL_MS));
+  }
+  return null;
+}
+
+// Borra los archivos de repeticiones anteriores que guardó OBS (nunca el que
+// está en la tele). Si OBS todavía tiene alguno abierto, queda para la próxima.
+function deleteOldReplayFiles() {
+  for (const old of oldReplayFiles) {
+    if (old === replayOnTv) continue;
+    try {
+      fs.rmSync(old, { force: true });
+      oldReplayFiles.delete(old);
+    } catch {
+      // archivo en uso
+    }
+  }
+}
+
+// Sin recorte: carga en la tele el archivo que guardó OBS tal cual y salta a
+// los últimos N segundos. Recortarlo antes con ffmpeg (aunque sea copiando sin
+// reprocesar) tardaba de 1 a 26 segundos en la PC de la mesa, según el disco.
 async function showReplayInObs(savedPath, seconds) {
   const token = ++replayToken;
-  const file = path.join(REPLAYS_DIR, `replay-${Date.now()}.mp4`);
-  try {
-    await trimLastSeconds(savedPath, seconds, file);
-  } catch (err) {
-    console.error("⚠️  No pude recortar con ffmpeg (¿está instalado y en el PATH?), muestro el buffer completo:", err.message);
-    fs.copyFileSync(savedPath, file);
-  }
+  const startedAt = Date.now();
+  if (replayOnTv) oldReplayFiles.add(replayOnTv);
 
   try {
-    await obs.call("SetInputSettings", { inputName: REPLAY_INPUT, inputSettings: { local_file: file } });
     await setReplayVisible(true);
+    await obs.call("SetInputSettings", { inputName: REPLAY_INPUT, inputSettings: { local_file: savedPath } });
     await obs.call("TriggerMediaInputAction", { inputName: REPLAY_INPUT, mediaAction: "OBS_WEBSOCKET_MEDIA_INPUT_ACTION_RESTART" });
-    console.log("✅ Repetición en la tele");
   } catch (err) {
     console.error("❌ No pude pasar la repetición en OBS:", err.message);
+    oldReplayFiles.add(savedPath);
     return;
+  }
+  replayOnTv = savedPath;
+
+  // Arranca desde el principio del buffer; apenas OBS sabe cuánto dura, salta
+  // a los últimos N segundos (puede verse un instante el principio).
+  const duration = await waitMediaDuration(token);
+  if (token !== replayToken) return; // llegó otra repetición mientras tanto
+  let backupMs;
+  if (duration) {
+    try {
+      await obs.call("SetMediaInputCursor", { inputName: REPLAY_INPUT, mediaCursor: Math.max(0, duration - seconds * 1000) });
+    } catch (err) {
+      console.error("⚠️  No pude adelantar la repetición, pasa desde el principio:", err.message);
+    }
+    backupMs = (seconds + 5) * 1000;
+    console.log(`✅ Repetición en la tele en ${((Date.now() - startedAt) / 1000).toFixed(1)}s`);
+  } else {
+    backupMs = FULL_BUFFER_FALLBACK_MS;
+    console.log(`⚠️  OBS no dijo cuánto dura el video en ${DURATION_WAIT_MS / 1000}s: la repetición pasa desde el principio del buffer`);
   }
 
   // Por si OBS no avisa que terminó: vuelve al vivo un rato después del final
   setTimeout(() => {
     if (token === replayToken) setReplayVisible(false).catch(() => {});
-  }, (seconds + 5) * 1000);
+  }, backupMs);
 
-  // Las repeticiones viejas se borran (la que se está mostrando no). Si OBS
-  // todavía tiene alguna abierta, queda para la próxima.
-  for (const name of fs.readdirSync(REPLAYS_DIR)) {
-    const old = path.join(REPLAYS_DIR, name);
-    if (old === file) continue;
-    try {
-      fs.rmSync(old, { force: true });
-    } catch {
-      // archivo en uso
-    }
-  }
+  deleteOldReplayFiles();
 }
 
 obs.on("MediaInputPlaybackEnded", ({ inputName }) => {
@@ -398,6 +452,10 @@ async function showReplay(savedPath, seconds) {
 
   lastUpdate = Date.now();
   console.log("✅ Repetición lista —", OUTPUT_FILE);
+
+  // Acá la tele pasa el recorte, no el archivo de OBS: ese ya se puede borrar.
+  oldReplayFiles.add(savedPath);
+  deleteOldReplayFiles();
 }
 
 async function uploadClip(savedPath, seconds, clipId) {
@@ -455,13 +513,22 @@ async function uploadClip(savedPath, seconds, clipId) {
   } finally {
     fs.rmSync(videoFile, { force: true });
     fs.rmSync(thumbFile, { force: true });
+    // El archivo que guardó OBS para este clip ya no hace falta
+    if (savedPath !== replayOnTv) {
+      try {
+        fs.rmSync(savedPath, { force: true });
+      } catch (err) {
+        console.error("⚠️  No pude borrar el archivo que guardó OBS para el clip:", err.message);
+      }
+    }
   }
 }
 
 obs.on("ReplayBufferSaved", async (data) => {
   const savedPath = data.savedReplayPath;
   const job = pending.shift() || { kind: "replay", seconds: 20 };
-  console.log(`🎬 OBS guardó el replay buffer en: ${savedPath} — ${job.kind === "clip" ? "clip" : "repetición"} de ${job.seconds}s`);
+  const took = job.requestedAt ? ` (OBS tardó ${((Date.now() - job.requestedAt) / 1000).toFixed(1)}s en guardarlo)` : "";
+  console.log(`🎬 OBS guardó el replay buffer en: ${savedPath} — ${job.kind === "clip" ? "clip" : "repetición"} de ${job.seconds}s${took}`);
 
   if (job.kind === "clip") {
     await uploadClip(savedPath, job.seconds, job.clipId);
@@ -506,8 +573,15 @@ async function requestBufferSave(job) {
   }
 }
 
+// Ids de comandos ya manejados: un pedido puede llegar dos veces, por Realtime
+// y por la búsqueda de pedidos perdidos al reconectar (ver main).
+const handledCommandIds = new Set();
+
 async function handleCommand(row) {
   if (row.type !== "mark_moment" && row.type !== "save_clip") return;
+  if (handledCommandIds.has(row.id)) return;
+  handledCommandIds.add(row.id);
+  if (handledCommandIds.size > 500) handledCommandIds.delete(handledCommandIds.values().next().value);
   if (MATCH_ID && row.match_id !== MATCH_ID) return;
 
   let match;
@@ -524,7 +598,7 @@ async function handleCommand(row) {
 
   if (row.type === "mark_moment") {
     console.log(`📲 Pedido de repetición: ${seconds}s (partida ${row.match_id})`);
-    await requestBufferSave({ kind: "replay", seconds });
+    await requestBufferSave({ kind: "replay", seconds, requestedAt: Date.now() });
     await markProcessed(row);
     return;
   }
@@ -556,6 +630,29 @@ async function handleCommand(row) {
     await supabase.from("clips").update({ status: "error", error_message: "OBS no pudo guardar el Replay Buffer" }).eq("id", clip.id);
   }
   await markProcessed(row);
+}
+
+// Pedidos que llegaron mientras el canal de Realtime estaba caído (pasa a veces
+// con CHANNEL_ERROR): al volver a SUBSCRIBED se buscan los de los últimos 30s
+// que nadie procesó y se pasan en orden. Lo que ya se manejó no se repite.
+const MISSED_COMMANDS_WINDOW_MS = 30 * 1000;
+
+async function recoverMissedCommands() {
+  const since = new Date(Date.now() - MISSED_COMMANDS_WINDOW_MS).toISOString();
+  const { data, error } = await supabase
+    .from("realtime_commands")
+    .select("*")
+    .in("type", ["mark_moment", "save_clip"])
+    .eq("processed", false)
+    .gte("created_at", since)
+    .order("created_at", { ascending: true });
+  if (error) {
+    console.error("⚠️  No pude buscar pedidos perdidos durante el corte de Realtime:", error.message);
+    return;
+  }
+  const missed = data.filter((row) => !handledCommandIds.has(row.id));
+  if (missed.length) console.log(`🔁 ${missed.length} pedido(s) llegaron durante el corte de Realtime, los paso ahora`);
+  for (const row of missed) await handleCommand(row);
 }
 
 async function setTableStatus(status) {
@@ -593,7 +690,10 @@ async function main() {
       { event: "INSERT", schema: "public", table: "realtime_commands" },
       (payload) => handleCommand(payload.new)
     )
-    .subscribe((status) => console.log("Supabase Realtime:", status));
+    .subscribe((status) => {
+      console.log("Supabase Realtime:", status);
+      if (status === "SUBSCRIBED") recoverMissedCommands();
+    });
 
   const app = express();
   app.use(express.static(PUBLIC_DIR));
