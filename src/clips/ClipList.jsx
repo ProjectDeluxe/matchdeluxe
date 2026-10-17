@@ -50,7 +50,8 @@ export default function ClipList({ clips, canDownload = false, emptyText = "Toda
             )}
             {c.status === "ready" && c.video_url && !c.expired_at && (
               canDownload ? (
-                <a className="clip-download" href={`${c.video_url}?download=`} download>
+                // video_url es un link firmado (ya trae ?token=...): download= le pide al storage que lo baje como archivo
+                <a className="clip-download" href={`${c.video_url}&download=`} download>
                   ⬇ Descargar
                 </a>
               ) : (

@@ -1,5 +1,5 @@
 -- ============================================================
--- POOL APP DELUXE — Schema completo v1.5 (incluye Fase 1: clubs/mesas, Fase 2: clips y Fase 3: planes, cuentas y clubs autogestionados)
+-- POOL APP DELUXE — Schema completo v1.6 (incluye Fase 1: clubs/mesas, Fase 2: clips, Fase 3: planes, cuentas y clubs autogestionados y Fase 4: bucket de clips privado)
 -- Pegar en Supabase → SQL Editor → Run
 -- ============================================================
 
@@ -148,9 +148,11 @@ ALTER PUBLICATION supabase_realtime ADD TABLE clips;
 
 -- ============================================================
 -- STORAGE: bucket para videos y avatares
+-- 'clips' es privado: la app ve los videos con links firmados que vencen
+-- en 1 hora (Fase 4, = migración 2026-10-17-fase4-clips-privados.sql)
 -- ============================================================
 INSERT INTO storage.buckets (id, name, public)
-VALUES ('clips', 'clips', true)
+VALUES ('clips', 'clips', false)
 ON CONFLICT DO NOTHING;
 
 INSERT INTO storage.buckets (id, name, public)
@@ -194,8 +196,9 @@ CREATE POLICY "auth_read_all"  ON tables             FOR SELECT USING (auth.role
 CREATE POLICY "auth_write_all" ON tables             FOR ALL    USING (auth.role() = 'authenticated');
 
 -- Storage policies
-CREATE POLICY "public_read_clips"   ON storage.objects FOR SELECT USING (bucket_id = 'clips');
-CREATE POLICY "auth_upload_clips"   ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'clips'   AND auth.role() = 'authenticated');
+-- clips: los logueados leen (hace falta para firmar el link), igual que la tabla clips;
+-- sube el agente con la service key, así que no hay política de subida. Fase 4.
+CREATE POLICY "auth_read_clips"     ON storage.objects FOR SELECT USING (bucket_id = 'clips'   AND auth.role() = 'authenticated');
 CREATE POLICY "public_read_avatars" ON storage.objects FOR SELECT USING (bucket_id = 'avatars');
 CREATE POLICY "auth_upload_avatars" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'avatars' AND auth.role() = 'authenticated');
 

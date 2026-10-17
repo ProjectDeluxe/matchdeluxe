@@ -396,13 +396,20 @@ Fase 3 cerrada: planes y límites (6.3), modelo de cuentas (6.4), vivo y repetic
 - Publicar no necesita el OK del rival, pero el rival lo puede despublicar.
 - Moderación y "reportar": siguen en la Fase 5. Antes de abrir el feed a cualquiera conviene al menos un botón de reportar.
 
+**Paso 1 — hecho en código (2026-10-17), falta correr la migración en producción:**
+- Migración `supabase/migrations/2026-10-17-fase4-clips-privados.sql` (idempotente, también en `supabase-schema.sql` v1.6): el bucket `clips` pasa a `public = false`, se sacan `public_read_clips` y `auth_upload_clips`, y entra `auth_read_clips`, que deja leer el bucket (lo que hace falta para firmar un link) a cualquier usuario autenticado. Es la misma regla que hoy tiene la tabla `clips` (`auth_read_all`), así que no se abre ni se cierra nada respecto de las filas. Los invitados (Anonymous sign-ins) cuentan como autenticados, igual que en la tabla.
+- App: `src/services/ClipService.js` firma video y miniatura con `createSignedUrls` (1 hora, una llamada cada 100 archivos) al traer la lista de clips, y devuelve los links firmados en `video_url` y `thumbnail_url`, así `ClipList` no cambia. El botón de descarga sigue escondido para el plan free, como hasta ahora, y usa el mismo link firmado con `&download=`.
+- Lo que se encontró: el agente guarda en `clips` la URL pública del video (`video_url`), la de la miniatura (`thumbnail_url`) y la ruta del video (`storage_path`, `<match_id>/<clip_id>.mp4`); la miniatura vive en el mismo bucket, al lado del video (`.jpg`), pero su ruta no se guarda. La app usa `storage_path` para el video y saca la ruta de la miniatura de su URL pública (lo que va después de `/object/public/clips/`), así que las filas viejas siguen andando. **El agente no se toca:** sube con la service key (no necesita políticas) y la URL pública que guarda sirve de referencia aunque ya no abra; así no hay que actualizar la PC de la mesa. El job de borrado (`api/cron/expire-clips.js`) usa `storage_path` y la service key, tampoco cambia.
+- **Para pasar a producción:** desplegar la app nueva y correr la migración en el SQL Editor de Supabase, en ese orden y seguidos (la app nueva funciona con el bucket todavía público; la vieja deja de mostrar videos apenas el bucket es privado). Después probar: ver un clip y su miniatura en Clips y en el perfil, descargar con un plan pago, y que la URL pública vieja de un clip ya no abra.
+- **Queda:** un link firmado vence a la hora; si alguien deja la pantalla abierta más de una hora, el video no carga hasta recargar la página. Si molesta, se puede volver a firmar al dar play. La descarga sigue dependiendo solo de esconder el botón: cualquiera logueado puede firmar un link; eso lo resuelve el paso 2. Más adelante, si se quiere, el agente puede dejar de guardar URLs públicas y guardar la ruta de la miniatura.
+
 **Costo a vigilar:** la transferencia, no el storage. Con Supabase Pro, 250 GB son ~96.000 reproducciones de un clip de 1 minuto por mes (6.3).
 
 **Fase 5 — Endurecer para producción real.** Ajustar las políticas RLS (hoy abiertas a "cualquier autenticado"), moderación de contenido público, monitoreo de mini-PCs (saber si una cámara se cayó), limpieza del código muerto y validaciones pendientes del punto 3.
 
 ## 7. Próximo paso concreto
 
-**Actualizado 2026-10-17:** Fases 1, 2 y 3 cerradas (lo que queda abierto de la 3, incluido el cobro, en 6.8). Siguiente: Fase 4, arrancando por el paso 1 de 6.9 (bucket privado y links firmados).
+**Actualizado 2026-10-17:** Fases 1, 2 y 3 cerradas (lo que queda abierto de la 3, incluido el cobro, en 6.8). Siguiente: Fase 4, arrancando por el paso 1 de 6.9 (bucket privado y links firmados), que ya está en código y falta pasar a producción (desplegar la app y correr la migración); después, el paso 2.
 
 ## 8. Expansión a otros deportes (tenis y lo que siga)
 
