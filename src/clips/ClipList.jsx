@@ -1,4 +1,6 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
+import { getClipDownloadUrl } from "../services/ClipService";
 import "./Clips.css";
 
 function formatDate(iso) {
@@ -8,6 +10,30 @@ function formatDate(iso) {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+// El link de descarga lo firma el servidor recién al tocar el botón, después de revisar el plan.
+function DownloadButton({ clipId }) {
+  const [state, setState] = useState(null); // null | "loading" | mensaje de error
+
+  async function download() {
+    setState("loading");
+    try {
+      window.location.href = await getClipDownloadUrl(clipId);
+      setState(null);
+    } catch (e) {
+      setState(e.status === 403 ? "Tu plan no permite descargar" : "No se pudo descargar");
+    }
+  }
+
+  return (
+    <>
+      <button type="button" className="clip-download" onClick={download} disabled={state === "loading"}>
+        {state === "loading" ? "Preparando…" : "⬇ Descargar"}
+      </button>
+      {state && state !== "loading" && <span className="clip-download-error">{state}</span>}
+    </>
+  );
 }
 
 // Grilla de clips guardados (la usan la pantalla Clips y el perfil del jugador).
@@ -50,10 +76,7 @@ export default function ClipList({ clips, canDownload = false, emptyText = "Toda
             )}
             {c.status === "ready" && c.video_url && !c.expired_at && (
               canDownload ? (
-                // video_url es un link firmado (ya trae ?token=...): download= le pide al storage que lo baje como archivo
-                <a className="clip-download" href={`${c.video_url}&download=`} download>
-                  ⬇ Descargar
-                </a>
+                <DownloadButton clipId={c.id} />
               ) : (
                 <Link className="clip-download clip-download-locked" to="/plan">
                   🔒 Descargar con un plan pago

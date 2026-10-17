@@ -1,0 +1,25 @@
+-- ============================================================
+-- POOL APP DELUXE — Migración Fase 4, paso 2: los links de clips los firma el servidor
+-- Para una base que YA tiene corrida la migración del paso 1
+-- (2026-10-17-fase4-clips-privados.sql). Ver ROADMAP 6.9, paso 2.
+-- Es idempotente: se puede correr más de una vez sin romper nada
+-- y no borra ni modifica archivos ni filas de clips.
+-- Pegar en Supabase → SQL Editor → Run
+--
+-- Qué cambia:
+--   - Se saca "auth_read_clips": con esa política cualquier usuario
+--     logueado (invitados incluidos) podía firmar desde el navegador
+--     un link de cualquier clip, también el de descarga, así que
+--     esconder el botón según el plan no alcanzaba.
+--   - El bucket 'clips' queda sin ninguna política para la app. Los
+--     links (para ver y para descargar) los firma la función
+--     api/clips/sign.js con la service key, que antes revisa la sesión
+--     y, para descargar, el plan del usuario.
+--
+-- ORDEN: primero desplegar la app nueva (esperar que Vercel diga Ready)
+-- y después correr esta migración. La app vieja firma los links desde
+-- el navegador y deja de mostrar videos apenas se saca la política;
+-- la nueva no la usa, así que anda antes y después.
+-- ============================================================
+
+DROP POLICY IF EXISTS "auth_read_clips" ON storage.objects;

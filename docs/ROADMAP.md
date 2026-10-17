@@ -1,6 +1,6 @@
 # PoolAppDeluxe — Roadmap y arquitectura (v1)
 
-Documento vivo. Última actualización: 2026-10-17 (Fase 3 cerrada y plan de arranque de la Fase 4), a partir de la revisión del código existente y la definición de producto con Agus.
+Documento vivo. Última actualización: 2026-10-17 (Fase 3 cerrada, paso 1 de la Fase 4 en producción y paso 2 en código), a partir de la revisión del código existente y la definición de producto con Agus.
 
 > **Actualización 2026-10-17:** Fase 3 cerrada. Agus probó en la mesa la repetición sin recorte con OBS real, probó las cuentas (crear un club con una cuenta que no es admin, darle acceso a un staff, cargar un partido jugado, el límite del plan gratis y el reclamo por celu; del invitado por QR se probó la página, falta una partida entera) y confirmó Anonymous sign-ins en Supabase y las variables de Vercel del job de borrado. El cobro (proveedor y precios) no bloquea el piloto: mientras tanto los planes pagos se activan a mano. Lo que queda abierto de la Fase 3 está en 6.8 y el plan de la Fase 4 en 6.9.
 
@@ -370,6 +370,7 @@ Esto depende de cosas que todavía no existen (login/panel de club, Fase 1 del m
 - Vista de todas las mesas desde una PC maestra.
 - Edición automática con IA del partido completo.
 - **Tele de la mesa abierta con QR (pedido de Agus, 2026-10-17):** al abrir una mesa, el agente pone en la tele el vivo de la mesa en grande con el QR de la mesa, para entrar con cuenta o como invitado, y al arrancar la partida pasa a la pantalla de partida de siempre. Va junto con el HUD de la partida (marcador y QR) integrado en la transmisión de OBS, que se habló en otra conversación y todavía no está en este documento.
+- **Rediseño visual de toda la app (pedido de Agus, 2026-10-17):** hoy se ve mal en el celu y en la PC. Por ejemplo, la pantalla de la mesa por QR (nueva partida) se sale del ancho del celu: se cortan el nombre, el selector de rival y el campo del celu. Hay que revisar el CSS completo, mobile primero.
 
 ### 6.8 Fase 3 — cierre (2026-10-17)
 
@@ -406,13 +407,23 @@ Fase 3 cerrada: planes y límites (6.3), modelo de cuentas (6.4), vivo y repetic
 - **Pasado a producción el 2026-10-17:** primero se desplegó la app y después se corrió la migración (al revés, la app vieja deja de mostrar videos apenas el bucket es privado). En `storage.objects` quedaron solo `auth_read_clips`, `public_read_avatars` y `auth_upload_avatars`. Probado: clips y miniaturas en Clips y en el perfil, descarga con plan pago, el link público viejo ya no abre y la foto de perfil se sube logueado.
 - **Queda:** un link firmado vence a la hora; si alguien deja la pantalla abierta más de una hora, el video no carga hasta recargar la página. Si molesta, se puede volver a firmar al dar play. La descarga sigue dependiendo solo de esconder el botón: cualquiera logueado puede firmar un link; eso lo resuelve el paso 2. Más adelante, si se quiere, el agente puede dejar de guardar URLs públicas y guardar la ruta de la miniatura.
 
+**Paso 2 — hecho en código (2026-10-17), falta pasar a producción:**
+- **Por qué:** con `auth_read_clips` (paso 1) cualquier usuario logueado, invitados incluidos, podía firmar desde el navegador un link de cualquier clip, también el de descarga. Esconder el botón según el plan no alcanzaba, y además cualquiera veía los clips de todos.
+- Migración `supabase/migrations/2026-10-17-fase4-firma-servidor.sql` (idempotente, también en `supabase-schema.sql` v1.7): saca `auth_read_clips`. El bucket `clips` queda sin políticas para la app.
+- Función `api/clips/sign.js` (Vercel, con `SUPABASE_URL` y `SUPABASE_SERVICE_KEY`, las mismas del job de borrado): valida la sesión con el token del usuario y firma los links con la service key. **Quién ve un clip:** los dos jugadores de la partida (el jugador con `user_id` del usuario), quien lo guardó (`owner_id`), la gente del club de la mesa (`club_members`) y el admin. Links para ver: 1 hora. Link de descarga: 5 minutos, solo para una cuenta real (no invitado) con `plan_for_user(uid).can_download`; si no, 403.
+- App: `ClipService` pide los links a la función en vez de firmarlos y deja solo los clips que la función devuelve, así que la pantalla Clips ya no muestra los clips de todo el mundo. El botón Descargar pide el link al tocarlo y avisa si el plan no alcanza. El agente y el job de borrado no cambian.
+- **Ojo:** `npm run dev` (Vite) no sirve las funciones de `api/`; para probar en local hace falta `vercel dev`, o probar en producción.
+- **Para pasar a producción:** push, esperar que el deploy de Vercel diga Ready y después correr la migración en el SQL Editor (al revés, la app vieja deja de mostrar videos).
+- **Pruebas:** ver clips y miniaturas con un plan gratis y con uno pago (en Clips y en el perfil); descargar con plan pago; con plan gratis, la descarga da 403 aunque se llame a la función a mano; un invitado o un usuario ajeno a la partida y al club no ve el clip; desde el navegador ya no se puede firmar un link (`createSignedUrl` falla).
+- **Queda:** la app trae todas las filas de `clips` y la función filtra cuáles se ven. Con muchos clips conviene filtrar en la base, ajustando la RLS de la tabla `clips` con la misma regla (Fase 5). Los links para ver siguen venciendo a la hora sin volver a pedirse al dar play.
+
 **Costo a vigilar:** la transferencia, no el storage. Con Supabase Pro, 250 GB son ~96.000 reproducciones de un clip de 1 minuto por mes (6.3).
 
 **Fase 5 — Endurecer para producción real.** Ajustar las políticas RLS (hoy abiertas a "cualquier autenticado"), moderación de contenido público, monitoreo de mini-PCs (saber si una cámara se cayó), limpieza del código muerto y validaciones pendientes del punto 3.
 
 ## 7. Próximo paso concreto
 
-**Actualizado 2026-10-17:** Fases 1, 2 y 3 cerradas (lo que queda abierto de la 3, incluido el cobro, en 6.8). Siguiente: Fase 4, arrancando por el paso 1 de 6.9 (bucket privado y links firmados), que ya está en producción y probado; sigue el paso 2 (descarga según plan).
+**Actualizado 2026-10-17:** Fases 1, 2 y 3 cerradas (lo que queda abierto de la 3, incluido el cobro, en 6.8). Siguiente: Fase 4, arrancando por el paso 1 de 6.9 (bucket privado y links firmados), que ya está en producción y probado. El paso 2 (links firmados por el servidor y descarga según plan) está en código: falta desplegarlo, correr su migración y probarlo (6.9). Después, el paso 3 (publicar y despublicar).
 
 ## 8. Expansión a otros deportes (tenis y lo que siga)
 

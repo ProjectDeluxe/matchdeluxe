@@ -7,45 +7,49 @@ const CLIP_SELECT = `
   table:tables!table_id(id, label, club:clubs(id, name))
 `;
 
-// El bucket 'clips' es privado (Fase 4): para ver un video o su miniatura
-// la app pide links firmados que vencen en 1 hora.
-const CLIPS_BUCKET = "clips";
-const SIGNED_URL_SEC = 60 * 60;
-const SIGN_BATCH = 100;
+// El bucket 'clips' es privado (Fase 4) y la app no puede firmar links:
+// los pide a api/clips/sign.js, que revisa la sesión y, para descargar, el plan.
+// Los links para ver vencen en 1 hora; el de descarga, en 5 minutos.
+const SIGN_BATCH = 200;
 
-// Ruta dentro del bucket a partir de la URL pública que guarda el agente
-// (lo que viene después de /object/public/clips/). La fila trae storage_path
-// solo para el video; para la miniatura esta es la única referencia.
-function pathFromPublicUrl(url) {
-  const marker = `/object/public/${CLIPS_BUCKET}/`;
-  const i = url ? url.indexOf(marker) : -1;
-  return i === -1 ? null : decodeURI(url.slice(i + marker.length).split("?")[0]);
+async function callSign(payload) {
+  const { data: { session } } = await supabase.auth.getSession();
+  const res = await fetch("/api/clips/sign", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${session?.access_token ?? ""}`,
+    },
+    body: JSON.stringify(payload),
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const err = new Error(body.error ?? `HTTP ${res.status}`);
+    err.status = res.status;
+    throw err;
+  }
+  return body;
 }
 
-// Reemplaza video_url y thumbnail_url de cada clip por links firmados,
-// con una sola llamada al storage por cada SIGN_BATCH archivos.
+// Deja solo los clips que el usuario puede ver (los de sus partidas, los de
+// su club, o todos si es admin; la función decide) y reemplaza video_url y
+// thumbnail_url por links firmados. Una llamada por cada SIGN_BATCH clips.
 async function withSignedUrls(clips) {
-  const refs = clips.map((c) =>
-    c.status === "ready" && !c.expired_at
-      ? { video: c.storage_path || pathFromPublicUrl(c.video_url), thumb: pathFromPublicUrl(c.thumbnail_url) }
-      : { video: null, thumb: null }
-  );
-
-  const paths = [...new Set(refs.flatMap((r) => [r.video, r.thumb]).filter(Boolean))];
-  const signed = new Map();
-  for (let i = 0; i < paths.length; i += SIGN_BATCH) {
-    const { data, error } = await supabase.storage
-      .from(CLIPS_BUCKET)
-      .createSignedUrls(paths.slice(i, i + SIGN_BATCH), SIGNED_URL_SEC);
-    if (error) throw error;
-    for (const d of data ?? []) if (d.signedUrl && !d.error) signed.set(d.path, d.signedUrl);
+  const signed = {};
+  for (let i = 0; i < clips.length; i += SIGN_BATCH) {
+    const { clips: batch } = await callSign({ clipIds: clips.slice(i, i + SIGN_BATCH).map((c) => c.id) });
+    Object.assign(signed, batch);
   }
 
-  return clips.map((c, i) => ({
-    ...c,
-    video_url: signed.get(refs[i].video) ?? null,
-    thumbnail_url: signed.get(refs[i].thumb) ?? null,
-  }));
+  return clips
+    .filter((c) => signed[c.id])
+    .map((c) => ({ ...c, video_url: signed[c.id].video_url, thumbnail_url: signed[c.id].thumbnail_url }));
+}
+
+// Link para bajar un clip como archivo. La función lo niega (403) si el plan no permite descargar.
+export async function getClipDownloadUrl(clipId) {
+  const { download_url } = await callSign({ clipIds: [clipId], download: true });
+  return download_url;
 }
 
 // Todos los clips, del más nuevo al más viejo (pantalla Clips & Replays)
