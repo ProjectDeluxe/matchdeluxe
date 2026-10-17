@@ -1,6 +1,8 @@
 # PoolAppDeluxe — Roadmap y arquitectura (v1)
 
-Documento vivo. Última actualización: 2026-10-15 (Fase 3, repetición en la tele sin recorte tras la tercera prueba en la mesa), a partir de la revisión del código existente y la definición de producto con Agus.
+Documento vivo. Última actualización: 2026-10-17 (Fase 3 cerrada y plan de arranque de la Fase 4), a partir de la revisión del código existente y la definición de producto con Agus.
+
+> **Actualización 2026-10-17:** Fase 3 cerrada. Agus probó en la mesa la repetición sin recorte con OBS real, probó las cuentas (entrar por QR como invitado, crear un club con una cuenta que no es admin, darle acceso a un staff y cargar un partido jugado), y confirmó Anonymous sign-ins en Supabase y las variables de Vercel del job de borrado. El cobro (proveedor y precios) no bloquea el piloto: mientras tanto los planes pagos se activan a mano. Lo que queda abierto de la Fase 3 está en 6.8 y el plan de la Fase 4 en 6.9.
 
 > **Actualización 2026-10-15:** pruebas en la PC de la mesa de la tele como proyector de OBS (6.5). La segunda (2026-10-11) arregló que la repetición no apareciera y pasó a un recorte sin reprocesar. La tercera (2026-10-12) mostró tiempos muy variables del disco (OBS 2–10 s en guardar, recorte hasta 25,7 s) y cortes de Supabase Realtime. Ahora el agente no recorta: carga el archivo de OBS y salta a los últimos segundos, borra los .mp4 que guarda OBS y recupera los pedidos que llegaron durante un corte de Realtime. Probado con OBS simulado; falta probarlo en la mesa.
 
@@ -237,12 +239,12 @@ Esto depende de cosas que todavía no existen (login/panel de club, Fase 1 del m
 - **La descarga se oculta en la app pero el bucket sigue público**: quien tenga el link del video lo puede bajar igual. Pasar el bucket a privado con links firmados queda para la Fase 4, junto con compartir por link.
 - **Activación manual mientras no haya cobro online:** desde el SQL Editor, `INSERT INTO user_subscriptions (user_id, plan_id, provider) VALUES ('<id de auth.users>', 'plus', 'manual');` (con `current_period_end` si tiene vencimiento).
 
-**Pendiente para cerrar la Fase 3:**
+**Pendiente para cerrar la Fase 3:** (estado al cierre, 2026-10-17; lo que sigue abierto está en 6.8)
 - Elegir proveedor de pago. Stripe (lo que decía este documento) no abre cuentas a comercios de Argentina sin una empresa en el exterior; la alternativa natural es Mercado Pago (suscripciones con débito automático en pesos). Con eso: botón "Suscribirme" en Mi plan → checkout del proveedor → webhook (función en `api/`) que escribe `user_subscriptions`.
-- Poner precios a Plus y Pro (columna `price_ars` de `plans`).
-- Correr `supabase/migrations/2026-10-07-fase3-planes.sql` en Supabase de producción.
-- En Vercel, agregar `SUPABASE_URL`, `SUPABASE_SERVICE_KEY` y `CRON_SECRET` (sin prefijo `VITE_`, así nunca llegan al navegador) para el job de borrado.
-- Prueba real: usuario free guarda 1 clip de 20 s → el segundo pedido se rechaza con aviso → alta manual a Plus → puede guardar de 1 min y descargar.
+- Poner precios a Plus y Pro (columna `price_ars` de `plans`). Este punto y el anterior pasan a 6.8: no bloquean el piloto.
+- ~~Correr `supabase/migrations/2026-10-07-fase3-planes.sql` en Supabase de producción~~ → hecho el 2026-10-08, junto con la de cuentas (6.4).
+- ~~En Vercel, agregar `SUPABASE_URL`, `SUPABASE_SERVICE_KEY` y `CRON_SECRET` (sin prefijo `VITE_`, así nunca llegan al navegador) para el job de borrado~~ → confirmado por Agus el 2026-10-17.
+- Prueba real: usuario free guarda 1 clip de 20 s → el segundo pedido se rechaza con aviso → alta manual a Plus → puede guardar de 1 min y descargar. Sin confirmar al cierre; pasa a 6.8.
 
 ### 6.4 Fase 3 — modelo de cuentas: club, jugador e invitado (2026-10-08)
 
@@ -283,8 +285,8 @@ Esto depende de cosas que todavía no existen (login/panel de club, Fase 1 del m
 
 **Pendiente para cerrar esta parte:**
 - ~~Correr en producción las dos migraciones y marcarse admin~~ → hecho el 2026-10-08 (Agus lo chequeó en el SQL Editor). Código en main desde `cb0a269`.
-- Supabase → Authentication → Sign In / Providers: activar **Anonymous sign-ins** (viene apagado). Activar también el CAPTCHA de Auth antes de abrir mesas en un club real: hoy el único freno a crear sesiones anónimas en loop es el límite por IP que trae Supabase (pedido de Agus: anotar el rate-limit para cuando haya mesas reales).
-- Prueba real: abrir una mesa, escanear el QR desde otro celu como invitado, jugar y terminar (la mesa vuelve a "abierta"). Después cargar un jugador de club con un celu y entrar con ese celu para confirmar el reclamo.
+- ~~Supabase → Authentication → Sign In / Providers: activar **Anonymous sign-ins** (viene apagado)~~ → confirmado por Agus el 2026-10-17. Activar también el CAPTCHA de Auth antes de abrir mesas en un club real: hoy el único freno a crear sesiones anónimas en loop es el límite por IP que trae Supabase (pedido de Agus: anotar el rate-limit para cuando haya mesas reales).
+- ~~Prueba real: abrir una mesa, escanear el QR desde otro celu como invitado, jugar y terminar (la mesa vuelve a "abierta")~~ → probado por Agus el 2026-10-17. Falta confirmar el reclamo: cargar un jugador de club con un celu y entrar con ese celu (pasa a 6.8).
 
 ### 6.5 Fase 3 — vivo continuo y repetición en la misma pantalla (2026-10-11)
 
@@ -320,6 +322,8 @@ Esto depende de cosas que todavía no existen (login/panel de club, Fase 1 del m
 - **Pedidos perdidos durante un corte de Realtime:** cada vez que el canal vuelve a `SUBSCRIBED`, el agente busca en `realtime_commands` los `mark_moment` y `save_clip` sin procesar de los últimos 30 s y los pasa en orden. Recuerda los ids ya manejados, así un pedido que llega por las dos vías no se hace dos veces. Depende de que el reloj de la PC esté bien (compara con `created_at` de la base).
 - Probado contra un OBS y un Supabase simulados: carga del archivo, espera de la duración y salto, una repetición que pisa a otra antes del salto, sin duración (pasa desde el principio), timer de respaldo después del salto, vuelta al vivo, borrado de archivos (incluido uno "en uso"), clip, y pedidos recuperados sin repetir. Falta la prueba con OBS real: sobre todo confirmar que el salto en el archivo recién guardado se ve bien y cuánto dura el instante del principio del buffer.
 
+**Cuarta prueba (2026-10-17): anda bien.** Agus probó en la mesa con OBS real la repetición sin recorte (`781c249`) y anda bien. Con eso queda cerrada esta parte.
+
 **Lo que hay que saber en la PC de la mesa:**
 - Para que tome lo nuevo hay que cerrar el agente (y la ventana vieja de Chrome, si quedó abierta) y volver a abrir `iniciar-agente.bat`. La cámara virtual de OBS ya no hace falta.
 - No poner la escena "PoolApp Tele" en el Programa: se grabarían las repeticiones.
@@ -354,7 +358,7 @@ Esto depende de cosas que todavía no existen (login/panel de club, Fase 1 del m
 - **Jugadores "del club":** son los que tienen `players.club_id` de ese club. Un jugador que se registró solo (sin club) no entra en `log_match_result` hasta que exista lo de "socio de más de un club" (backlog, 6.7).
 - Si alguien escanea el QR de una partida suelta ajena con su propia cuenta, no puede mover el marcador salvo que sea uno de los dos jugadores.
 
-**Pendiente:** prueba real: crear un club con una cuenta que no sea admin, darle acceso a otro celu como staff, cargar un partido jugado y arrancar una partida por QR como invitado para confirmar que el marcador se mueve.
+~~**Pendiente:** prueba real: crear un club con una cuenta que no sea admin, darle acceso a otro celu como staff, cargar un partido jugado y arrancar una partida por QR como invitado para confirmar que el marcador se mueve.~~ → probado por Agus el 2026-10-17.
 
 ### 6.7 Backlog (pedido de Agus, no bloquea)
 
@@ -366,13 +370,39 @@ Esto depende de cosas que todavía no existen (login/panel de club, Fase 1 del m
 - Vista de todas las mesas desde una PC maestra.
 - Edición automática con IA del partido completo.
 
+### 6.8 Fase 3 — cierre (2026-10-17)
+
+Fase 3 cerrada: planes y límites (6.3), modelo de cuentas (6.4), vivo y repetición en la tele (6.5) y clubs autogestionados (6.6), todo en main, en producción y probado por Agus. Queda abierto, sin bloquear la Fase 4:
+- **Cobro:** elegir proveedor (recomendado Mercado Pago) y poner precio a Plus y Pro. Mientras tanto, alta manual desde el SQL Editor (6.3).
+- **CAPTCHA de Auth** antes de abrir mesas en un club real (6.4).
+- Pruebas no confirmadas al cierre: el límite del plan free (segundo clip rechazado y después alta manual a Plus) y el reclamo de un jugador por celu.
+- `agent/replay-agent/README.md` todavía dice que el buffer de repetición va en 60 s; lo correcto es ~65 s (6.5).
+
 **Fase 4 — Publicar y compartir.** Feed o galería de clips públicos, compartir por link, descarga habilitada según plan.
+
+### 6.9 Fase 4 — plan de arranque (2026-10-17, propuesta)
+
+**De dónde se parte:** `clips.is_public` existe y un trigger ya impide publicar si el plan no lo permite (6.3). El bucket `clips` es público: cualquiera con el link baja el video, y la política `auth_upload_clips` deja subir archivos al bucket a cualquier logueado (los clips los sube el agente con la service key, así que no la necesita). La descarga se oculta en la app solo para el plan free.
+
+**Orden propuesto (cada paso es un commit aparte):**
+1. **Bucket privado y links firmados.** `clips` pasa a privado y la app pide links firmados con vencimiento corto para ver los clips. Se saca `auth_upload_clips`. No cambia nada a la vista: es la base para que "descargar según plan" y "público o privado" sean reales y no solo un botón escondido.
+2. **Descarga según plan, de verdad.** El link de descarga lo firma una función en `api/` que antes verifica el plan del usuario.
+3. **Publicar y despublicar.** Botón en el clip para su dueño (con plan Plus o Pro, que ya lo controla el trigger). Cualquiera de los dos jugadores con cuenta puede despublicarlo, porque sale en el video.
+4. **Página de clip compartible** (`/c/:id`): un clip público se puede ver por link sin login. Para que el link muestre la miniatura al compartirlo por WhatsApp hace falta una función en `api/` que devuelva las etiquetas de vista previa, porque la app es una SPA.
+5. **Feed de clips públicos:** galería de los clips publicados, con filtro por club.
+
+**Decidido con Agus (2026-10-17):**
+- El link de un clip público se ve sin login; el feed, solo con cuenta.
+- Publicar no necesita el OK del rival, pero el rival lo puede despublicar.
+- Moderación y "reportar": siguen en la Fase 5. Antes de abrir el feed a cualquiera conviene al menos un botón de reportar.
+
+**Costo a vigilar:** la transferencia, no el storage. Con Supabase Pro, 250 GB son ~96.000 reproducciones de un clip de 1 minuto por mes (6.3).
 
 **Fase 5 — Endurecer para producción real.** Ajustar las políticas RLS (hoy abiertas a "cualquier autenticado"), moderación de contenido público, monitoreo de mini-PCs (saber si una cámara se cayó), limpieza del código muerto y validaciones pendientes del punto 3.
 
 ## 7. Próximo paso concreto
 
-**Actualizado 2026-10-15:** Fases 1 y 2 cerradas. Fase 3 en curso: planes y límites (6.3) y modelo de cuentas (6.4) en main y en producción. Vivo + repetición en la misma pantalla en main (6.5); la tele es un proyector de OBS y ya se probó en la mesa: la repetición ahora sale sin recorte (salta al final del archivo de OBS) y el agente recupera pedidos perdidos por cortes de Realtime, falta volver a probarlo en la mesa con el buffer en ~65 s. Cuentas de club autogestionadas en main y en producción (6.6), falta la prueba real con dos cuentas. Después: elegir proveedor de pago, poner precios y sumar el cobro encima de este modelo.
+**Actualizado 2026-10-17:** Fases 1, 2 y 3 cerradas (lo que queda abierto de la 3, incluido el cobro, en 6.8). Siguiente: Fase 4, arrancando por el paso 1 de 6.9 (bucket privado y links firmados).
 
 ## 8. Expansión a otros deportes (tenis y lo que siga)
 
