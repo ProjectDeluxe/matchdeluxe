@@ -2,7 +2,7 @@
 
 Documento vivo. Última actualización: 2026-10-17 (Fase 3 cerrada y plan de arranque de la Fase 4), a partir de la revisión del código existente y la definición de producto con Agus.
 
-> **Actualización 2026-10-17:** Fase 3 cerrada. Agus probó en la mesa la repetición sin recorte con OBS real, probó las cuentas (entrar por QR como invitado, crear un club con una cuenta que no es admin, darle acceso a un staff y cargar un partido jugado), y confirmó Anonymous sign-ins en Supabase y las variables de Vercel del job de borrado. El cobro (proveedor y precios) no bloquea el piloto: mientras tanto los planes pagos se activan a mano. Lo que queda abierto de la Fase 3 está en 6.8 y el plan de la Fase 4 en 6.9.
+> **Actualización 2026-10-17:** Fase 3 cerrada. Agus probó en la mesa la repetición sin recorte con OBS real, probó las cuentas (crear un club con una cuenta que no es admin, darle acceso a un staff, cargar un partido jugado, el límite del plan gratis y el reclamo por celu; del invitado por QR se probó la página, falta una partida entera) y confirmó Anonymous sign-ins en Supabase y las variables de Vercel del job de borrado. El cobro (proveedor y precios) no bloquea el piloto: mientras tanto los planes pagos se activan a mano. Lo que queda abierto de la Fase 3 está en 6.8 y el plan de la Fase 4 en 6.9.
 
 > **Actualización 2026-10-15:** pruebas en la PC de la mesa de la tele como proyector de OBS (6.5). La segunda (2026-10-11) arregló que la repetición no apareciera y pasó a un recorte sin reprocesar. La tercera (2026-10-12) mostró tiempos muy variables del disco (OBS 2–10 s en guardar, recorte hasta 25,7 s) y cortes de Supabase Realtime. Ahora el agente no recorta: carga el archivo de OBS y salta a los últimos segundos, borra los .mp4 que guarda OBS y recupera los pedidos que llegaron durante un corte de Realtime. Probado con OBS simulado; falta probarlo en la mesa.
 
@@ -244,7 +244,7 @@ Esto depende de cosas que todavía no existen (login/panel de club, Fase 1 del m
 - Poner precios a Plus y Pro (columna `price_ars` de `plans`). Este punto y el anterior pasan a 6.8: no bloquean el piloto.
 - ~~Correr `supabase/migrations/2026-10-07-fase3-planes.sql` en Supabase de producción~~ → hecho el 2026-10-08, junto con la de cuentas (6.4).
 - ~~En Vercel, agregar `SUPABASE_URL`, `SUPABASE_SERVICE_KEY` y `CRON_SECRET` (sin prefijo `VITE_`, así nunca llegan al navegador) para el job de borrado~~ → confirmado por Agus el 2026-10-17.
-- Prueba real: usuario free guarda 1 clip de 20 s → el segundo pedido se rechaza con aviso → alta manual a Plus → puede guardar de 1 min y descargar. Sin confirmar al cierre; pasa a 6.8.
+- ~~Prueba real: usuario free guarda 1 clip de 20 s → el segundo pedido se rechaza con aviso → alta manual a Plus → puede guardar de 1 min y descargar~~ → probado por Agus el 2026-10-17 con números de prueba (6.8).
 
 ### 6.4 Fase 3 — modelo de cuentas: club, jugador e invitado (2026-10-08)
 
@@ -286,7 +286,7 @@ Esto depende de cosas que todavía no existen (login/panel de club, Fase 1 del m
 **Pendiente para cerrar esta parte:**
 - ~~Correr en producción las dos migraciones y marcarse admin~~ → hecho el 2026-10-08 (Agus lo chequeó en el SQL Editor). Código en main desde `cb0a269`.
 - ~~Supabase → Authentication → Sign In / Providers: activar **Anonymous sign-ins** (viene apagado)~~ → confirmado por Agus el 2026-10-17. Activar también el CAPTCHA de Auth antes de abrir mesas en un club real: hoy el único freno a crear sesiones anónimas en loop es el límite por IP que trae Supabase (pedido de Agus: anotar el rate-limit para cuando haya mesas reales).
-- ~~Prueba real: abrir una mesa, escanear el QR desde otro celu como invitado, jugar y terminar (la mesa vuelve a "abierta")~~ → probado por Agus el 2026-10-17. Falta confirmar el reclamo: cargar un jugador de club con un celu y entrar con ese celu (pasa a 6.8).
+- ~~Prueba real: abrir una mesa, escanear el QR desde otro celu como invitado, jugar y terminar (la mesa vuelve a "abierta")~~ → la página del QR se probó el 2026-10-17 con una cuenta logueada; falta jugar una partida entera como invitado, desde una pestaña privada (6.8). ~~Después cargar un jugador de club con un celu y entrar con ese celu para confirmar el reclamo~~ → probado el 2026-10-17.
 
 ### 6.5 Fase 3 — vivo continuo y repetición en la misma pantalla (2026-10-11)
 
@@ -369,13 +369,15 @@ Esto depende de cosas que todavía no existen (login/panel de club, Fase 1 del m
 - Cartelería y consentimiento legal para clubes reales (se filma a la gente).
 - Vista de todas las mesas desde una PC maestra.
 - Edición automática con IA del partido completo.
+- **Tele de la mesa abierta con QR (pedido de Agus, 2026-10-17):** al abrir una mesa, el agente pone en la tele el vivo de la mesa en grande con el QR de la mesa, para entrar con cuenta o como invitado, y al arrancar la partida pasa a la pantalla de partida de siempre. Va junto con el HUD de la partida (marcador y QR) integrado en la transmisión de OBS, que se habló en otra conversación y todavía no está en este documento.
 
 ### 6.8 Fase 3 — cierre (2026-10-17)
 
 Fase 3 cerrada: planes y límites (6.3), modelo de cuentas (6.4), vivo y repetición en la tele (6.5) y clubs autogestionados (6.6), todo en main, en producción y probado por Agus. Queda abierto, sin bloquear la Fase 4:
 - **Cobro:** elegir proveedor (recomendado Mercado Pago) y poner precio a Plus y Pro. Mientras tanto, alta manual desde el SQL Editor (6.3).
 - **CAPTCHA de Auth** antes de abrir mesas en un club real (6.4).
-- Pruebas no confirmadas al cierre: el límite del plan free (segundo clip rechazado y después alta manual a Plus) y el reclamo de un jugador por celu.
+- ~~Pruebas no confirmadas al cierre: el límite del plan free y el reclamo de un jugador por celu~~ → probadas el 2026-10-17. Para probar sin SMS (Twilio todavía no está configurado) se usan números de prueba de Supabase (Authentication → Sign In / Providers → Phone → Test Phone Numbers and OTPs), con código fijo: `541100000000` (Pro), `541100000001` (gratis, dueña de un club de prueba) y `541100000002` (reclamo). Borrarlos antes de abrir a un club real.
+- Falta jugar una partida entera como invitado por el QR de la mesa, desde una pestaña privada (la página del QR ya se probó con una cuenta). Ojo al probar: el QR de la mesa está en 🏢 Clubs → mesa → QR; el que aparece en la pantalla de la partida es otro (lleva al control de esa partida y pide login).
 - `agent/replay-agent/README.md` todavía dice que el buffer de repetición va en 60 s; lo correcto es ~65 s (6.5).
 
 **Fase 4 — Publicar y compartir.** Feed o galería de clips públicos, compartir por link, descarga habilitada según plan.
@@ -396,12 +398,12 @@ Fase 3 cerrada: planes y límites (6.3), modelo de cuentas (6.4), vivo y repetic
 - Publicar no necesita el OK del rival, pero el rival lo puede despublicar.
 - Moderación y "reportar": siguen en la Fase 5. Antes de abrir el feed a cualquiera conviene al menos un botón de reportar.
 
-**Paso 1 — hecho en código (2026-10-17), falta correr la migración en producción:**
+**Paso 1 — hecho y en producción (2026-10-17, `3657fd0` y `883478d`; migración corrida y probada por Agus):**
 - Migración `supabase/migrations/2026-10-17-fase4-clips-privados.sql` (idempotente, también en `supabase-schema.sql` v1.6): el bucket `clips` pasa a `public = false`, se sacan `public_read_clips` y `auth_upload_clips`, y entra `auth_read_clips`, que deja leer el bucket (lo que hace falta para firmar un link) a cualquier usuario autenticado. Es la misma regla que hoy tiene la tabla `clips` (`auth_read_all`), así que no se abre ni se cierra nada respecto de las filas. Los invitados (Anonymous sign-ins) cuentan como autenticados, igual que en la tabla.
 - App: `src/services/ClipService.js` firma video y miniatura con `createSignedUrls` (1 hora, una llamada cada 100 archivos) al traer la lista de clips, y devuelve los links firmados en `video_url` y `thumbnail_url`, así `ClipList` no cambia. El botón de descarga sigue escondido para el plan free, como hasta ahora, y usa el mismo link firmado con `&download=`.
 - Lo que se encontró: el agente guarda en `clips` la URL pública del video (`video_url`), la de la miniatura (`thumbnail_url`) y la ruta del video (`storage_path`, `<match_id>/<clip_id>.mp4`); la miniatura vive en el mismo bucket, al lado del video (`.jpg`), pero su ruta no se guarda. La app usa `storage_path` para el video y saca la ruta de la miniatura de su URL pública (lo que va después de `/object/public/clips/`), así que las filas viejas siguen andando. **El agente no se toca:** sube con la service key (no necesita políticas) y la URL pública que guarda sirve de referencia aunque ya no abra; así no hay que actualizar la PC de la mesa. El job de borrado (`api/cron/expire-clips.js`) usa `storage_path` y la service key, tampoco cambia.
 - **Encontrado en producción (2026-10-17):** el storage tenía dos políticas armadas a mano desde el panel, `public_select 1oj01fe_0` (SELECT) y `public_upload 1oj01fe_0` (INSERT), con rol public y sin filtrar por bucket: cualquiera, sin login, podía leer y subir archivos en cualquier bucket, incluido `clips`. Tampoco estaban `public_read_avatars` ni `auth_upload_avatars` del esquema; la subida de fotos de perfil (`uploadAvatar`, un `.upload` simple, sin upsert) andaba gracias a `public_upload`. La misma migración saca las dos y recrea las de avatars tal como están en `supabase-schema.sql`: subir una foto de perfil pasa a exigir login, como siempre quiso el esquema.
-- **Para pasar a producción:** desplegar la app nueva y correr la migración en el SQL Editor de Supabase, en ese orden y seguidos (la app nueva funciona con el bucket todavía público; la vieja deja de mostrar videos apenas el bucket es privado). Después probar: ver un clip y su miniatura en Clips y en el perfil, descargar con un plan pago, y que la URL pública vieja de un clip ya no abra.
+- **Pasado a producción el 2026-10-17:** primero se desplegó la app y después se corrió la migración (al revés, la app vieja deja de mostrar videos apenas el bucket es privado). En `storage.objects` quedaron solo `auth_read_clips`, `public_read_avatars` y `auth_upload_avatars`. Probado: clips y miniaturas en Clips y en el perfil, descarga con plan pago, el link público viejo ya no abre y la foto de perfil se sube logueado.
 - **Queda:** un link firmado vence a la hora; si alguien deja la pantalla abierta más de una hora, el video no carga hasta recargar la página. Si molesta, se puede volver a firmar al dar play. La descarga sigue dependiendo solo de esconder el botón: cualquiera logueado puede firmar un link; eso lo resuelve el paso 2. Más adelante, si se quiere, el agente puede dejar de guardar URLs públicas y guardar la ruta de la miniatura.
 
 **Costo a vigilar:** la transferencia, no el storage. Con Supabase Pro, 250 GB son ~96.000 reproducciones de un clip de 1 minuto por mes (6.3).
@@ -410,7 +412,7 @@ Fase 3 cerrada: planes y límites (6.3), modelo de cuentas (6.4), vivo y repetic
 
 ## 7. Próximo paso concreto
 
-**Actualizado 2026-10-17:** Fases 1, 2 y 3 cerradas (lo que queda abierto de la 3, incluido el cobro, en 6.8). Siguiente: Fase 4, arrancando por el paso 1 de 6.9 (bucket privado y links firmados), que ya está en código y falta pasar a producción (desplegar la app y correr la migración); después, el paso 2.
+**Actualizado 2026-10-17:** Fases 1, 2 y 3 cerradas (lo que queda abierto de la 3, incluido el cobro, en 6.8). Siguiente: Fase 4, arrancando por el paso 1 de 6.9 (bucket privado y links firmados), que ya está en producción y probado; sigue el paso 2 (descarga según plan).
 
 ## 8. Expansión a otros deportes (tenis y lo que siga)
 
