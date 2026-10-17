@@ -17,6 +17,12 @@
 --     y se permite a cualquier usuario autenticado, igual que la política
 --     "auth_read_all" de la tabla clips (Fase 3). Ojo: los invitados
 --     (Anonymous sign-ins) también son 'authenticated', como en la tabla.
+--   - Se sacan "public_select 1oj01fe_0" y "public_upload 1oj01fe_0",
+--     dos políticas armadas a mano desde el panel que dejaban leer y subir
+--     archivos en cualquier bucket sin login (ver el bloque del final).
+--   - Se recrean "public_read_avatars" y "auth_upload_avatars" tal como
+--     están en supabase-schema.sql: subir una foto de perfil pasa a exigir
+--     login, como siempre quiso el esquema.
 --
 -- Hay que desplegar la app nueva (que firma los links) junto con esta
 -- migración: con la app vieja los videos dejan de verse.
@@ -31,3 +37,23 @@ DROP POLICY IF EXISTS "auth_read_clips" ON storage.objects;
 CREATE POLICY "auth_read_clips" ON storage.objects FOR SELECT USING (
   bucket_id = 'clips' AND auth.role() = 'authenticated'
 );
+
+-- ------------------------------------------------------------
+-- Políticas de storage hechas a mano desde el panel de Supabase.
+-- Encontradas en producción el 2026-10-17, con rol public:
+--   "public_select 1oj01fe_0"  FOR SELECT USING (true)
+--   "public_upload 1oj01fe_0"  FOR INSERT WITH CHECK (true)
+-- No filtraban por bucket: cualquiera, sin login, podía leer y subir
+-- archivos en cualquier bucket (también en 'clips', lo que anulaba que
+-- fuera privado). Producción tampoco tenía las políticas de avatars del
+-- esquema; la subida de fotos de perfil andaba gracias a "public_upload".
+-- ------------------------------------------------------------
+
+DROP POLICY IF EXISTS "public_select 1oj01fe_0" ON storage.objects;
+DROP POLICY IF EXISTS "public_upload 1oj01fe_0" ON storage.objects;
+
+DROP POLICY IF EXISTS "public_read_avatars" ON storage.objects;
+CREATE POLICY "public_read_avatars" ON storage.objects FOR SELECT USING (bucket_id = 'avatars');
+
+DROP POLICY IF EXISTS "auth_upload_avatars" ON storage.objects;
+CREATE POLICY "auth_upload_avatars" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'avatars' AND auth.role() = 'authenticated');
