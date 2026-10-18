@@ -142,7 +142,7 @@ export default function PartidaControl() {
     setFinishing(true);
     await sendCommand(id, "end_match", { winner_id: winnerId });
     await finishMatch(id, winnerId);
-    navigate("/historial");
+    navigate("/partida");
   }
 
   if (loading) {
@@ -172,9 +172,9 @@ export default function PartidaControl() {
       {/* Header */}
       <div className="ctrl-header">
         <span className={`ctrl-badge ${finished ? "badge-off" : "badge-live"}`}>
-          {finished ? "FINALIZADA" : "● EN VIVO"}
+          {finished ? "Terminada" : "En vivo"}
         </span>
-        <span className="ctrl-title">POOLAPPDELUXE</span>
+        <span className="ctrl-title">PoolAppDeluxe</span>
       </div>
 
       {/* Marcador */}
@@ -183,7 +183,7 @@ export default function PartidaControl() {
         <div className="ctrl-player">
           {p1?.avatar_url
             ? <img src={p1.avatar_url} alt={p1.name} className="ctrl-avatar" />
-            : <div className="ctrl-avatar-placeholder">🎱</div>
+            : <div className="ctrl-avatar-placeholder">{(p1?.name ?? "J").charAt(0).toUpperCase()}</div>
           }
           <span className="ctrl-name">{p1?.name ?? "Jugador 1"}</span>
 
@@ -203,7 +203,7 @@ export default function PartidaControl() {
         <div className="ctrl-player">
           {p2?.avatar_url
             ? <img src={p2.avatar_url} alt={p2.name} className="ctrl-avatar" />
-            : <div className="ctrl-avatar-placeholder">🎱</div>
+            : <div className="ctrl-avatar-placeholder">{(p2?.name ?? "J").charAt(0).toUpperCase()}</div>
           }
           <span className="ctrl-name">{p2?.name ?? "Jugador 2"}</span>
 
@@ -221,7 +221,7 @@ export default function PartidaControl() {
       {/* Ganador */}
       {finished && match.winner_id && (
         <div className="ctrl-winner">
-          🏆 {match.winner_id === p1?.id ? p1?.name : p2?.name} ganó
+          Ganó {match.winner_id === p1?.id ? p1?.name : p2?.name}
         </div>
       )}
 
@@ -237,7 +237,7 @@ export default function PartidaControl() {
                 onClick={() => handleReplay(sec)}
                 disabled={!!clipping}
               >
-                {clipping === sec ? "✓ ENVIADO" : sec === 60 ? "⏮ 1 min" : `⏮ ${sec}s`}
+                {clipping === sec ? "Enviado" : sec === 60 ? "1 min" : `${sec}s`}
               </button>
             ))}
           </div>
@@ -254,14 +254,14 @@ export default function PartidaControl() {
                 onClick={() => handleSaveClip(sec)}
                 disabled={!!saving || clipsLeft === 0 || (plan?.max_clip_sec != null && sec > plan.max_clip_sec)}
               >
-                {saving === sec ? "✓ PEDIDO" : sec === 60 ? "💾 1 min" : `💾 ${sec}s`}
+                {saving === sec ? "Pedido" : sec === 60 ? "1 min" : `${sec}s`}
               </button>
             ))}
           </div>
           {clipStatus && (
             <p className={`clip-status clip-status-${clipStatus}`}>
               {clipStatus === "processing" && "Guardando clip…"}
-              {clipStatus === "ready" && "✓ Clip guardado en el perfil"}
+              {clipStatus === "ready" && "Clip guardado en el perfil"}
               {clipStatus === "error" && "No se pudo guardar el clip"}
             </p>
           )}
@@ -276,7 +276,7 @@ export default function PartidaControl() {
               className="action-btn end-btn"
               onClick={() => setConfirmEnd(true)}
             >
-              🏁 TERMINAR PARTIDA
+              Terminar partida
             </button>
           ) : (
             <div className="confirm-end">
@@ -307,8 +307,8 @@ export default function PartidaControl() {
       )}
 
       {finished && (
-        <button className="action-btn" onClick={() => navigate("/historial")}>
-          Ver historial
+        <button className="action-btn" onClick={() => navigate("/partida")}>
+          Volver
         </button>
       )}
 

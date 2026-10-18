@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { getPlans } from "../services/PlanService";
 import { usePlan } from "./usePlan";
 import "./Plan.css";
@@ -31,8 +32,9 @@ export default function Plan() {
   const limit = plan?.clips_per_month;
 
   return (
-    <div className="page-content plan-page">
-      <h2>Mi plan</h2>
+    <div className="page plan-page">
+      <Link to="/perfil" className="muted">← Perfil</Link>
+      <h1>Suscripción</h1>
 
       {error && <p className="plan-error">{error}</p>}
 
@@ -63,7 +65,7 @@ export default function Plan() {
             {plan?.id === p.id ? (
               <span className="plan-tag">Tu plan</span>
             ) : p.price_ars ? (
-              <button className="btn plan-btn" disabled title="El pago online todavía no está habilitado">
+              <button className="btn btn-secondary plan-btn" disabled title="El pago online todavía no está habilitado">
                 Suscribirme (pronto)
               </button>
             ) : null}

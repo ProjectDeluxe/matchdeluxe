@@ -6,20 +6,7 @@ export default function ProtectedRoute({ children }) {
   const location = useLocation();
 
   if (loading) {
-    return (
-      <div style={{
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-        minHeight: "60vh",
-        color: "rgba(255,255,255,0.5)",
-        fontFamily: "'Orbitron', sans-serif",
-        fontSize: "0.9rem",
-        letterSpacing: "2px"
-      }}>
-        CARGANDO...
-      </div>
-    );
+    return <p className="loading">Cargando…</p>;
   }
 
   if (!user) {

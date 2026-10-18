@@ -1,90 +1,64 @@
-import { useCallback, useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { usePlan } from "../plan/usePlan";
-import { getFeed } from "../services/ClipService";
+import { getClips } from "../services/ClipService";
 import ClipList from "./ClipList.jsx";
 import "./Clips.css";
 
-// Feed de clips públicos (Fase 4, paso 5): lo publicado por todos, del más
-// nuevo al más viejo, con filtro por club. Solo con cuenta real.
+// Inicio: todos los clips que el usuario puede ver (los de sus partidas, los de
+// su club y los públicos), del más nuevo al más viejo, en una columna. Reemplaza
+// a las pantallas separadas de Clips y Feed.
 export default function Feed() {
-  const { user } = useAuth();
+  const { user, account } = useAuth();
   const { plan } = usePlan();
-  const [clips, setClips] = useState([]);
-  const [clubs, setClubs] = useState([]);
-  const [clubId, setClubId] = useState("");
-  const [cursor, setCursor] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [clips, setClips] = useState(null); // null = cargando
   const [error, setError] = useState(null);
+  const [onlyMine, setOnlyMine] = useState(false);
 
-  const guest = !!user?.is_anonymous;
-
-  const load = useCallback(
-    async (more) => {
-      setLoading(true);
-      setError(null);
-      try {
-        const page = await getFeed({ cursor: more ? cursor : null, clubId: clubId || null });
-        setClips((prev) => (more ? [...prev, ...page.clips] : page.clips));
-        setClubs(page.clubs);
-        setCursor(page.next_cursor);
-      } catch (e) {
-        setError(e.message);
-      } finally {
-        setLoading(false);
-      }
-    },
-    [cursor, clubId]
-  );
-
-  // Primera página, y otra vez cada vez que cambia el filtro
   useEffect(() => {
-    if (!guest) load(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [clubId, guest]);
+    getClips()
+      .then(setClips)
+      .catch((e) => {
+        setError(e.message);
+        setClips([]);
+      });
+  }, []);
 
-  if (guest) {
-    return (
-      <div className="page-content clips-page">
-        <h2>Feed</h2>
-        <p className="clips-empty">
-          Creá tu cuenta para ver el feed. <Link to="/login">Entrar con tu celu</Link>
-        </p>
-      </div>
-    );
-  }
+  const myPlayerId = account?.player?.id;
+  const isMine = (c) =>
+    (!!user && c.owner_id === user.id) ||
+    (!!myPlayerId && (c.player1?.id === myPlayerId || c.player2?.id === myPlayerId));
+  const guest = !!user?.is_anonymous;
+  const visible = onlyMine ? (clips ?? []).filter(isMine) : clips ?? [];
 
   return (
-    <div className="page-content clips-page">
-      <h2>Feed</h2>
+    <div className="page feed-page">
+      <div className="page-head">
+        <h1>Clips</h1>
+        {!guest && (
+          <div className="tabs" role="tablist">
+            <button type="button" role="tab" aria-selected={!onlyMine} className={`tab${!onlyMine ? " tab-active" : ""}`} onClick={() => setOnlyMine(false)}>
+              Todos
+            </button>
+            <button type="button" role="tab" aria-selected={onlyMine} className={`tab${onlyMine ? " tab-active" : ""}`} onClick={() => setOnlyMine(true)}>
+              Míos
+            </button>
+          </div>
+        )}
+      </div>
 
-      {clubs.length > 0 && (
-        <select className="feed-filter" value={clubId} onChange={(e) => setClubId(e.target.value)}>
-          <option value="">Todos los clubs</option>
-          {clubs.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
-      )}
-
-      {error && <p className="clips-error">{error}</p>}
-      {!error && (clips.length > 0 || !loading) && (
+      {error && <p className="error">{error}</p>}
+      {clips === null ? (
+        <p className="loading">Cargando clips…</p>
+      ) : (
         <ClipList
-          key={clubId}
-          clips={clips}
+          key={onlyMine ? "mine" : "all"}
+          clips={visible}
           canDownload={!!plan?.can_download}
-          canReport
-          emptyText="Todavía no hay clips publicados."
+          canReport={!guest}
+          isMine={isMine}
+          emptyText={onlyMine ? "Todavía no tenés clips. Se guardan desde el control de la partida." : "Todavía no hay clips para ver."}
         />
-      )}
-      {loading && <p className="clips-empty">Cargando clips...</p>}
-      {!loading && cursor && (
-        <button type="button" className="btn feed-more" onClick={() => load(true)}>
-          Cargar más
-        </button>
       )}
     </div>
   );

@@ -19,14 +19,14 @@ export default function ClipPublico() {
       .catch(() => setClip(null));
   }, [id]);
 
-  if (clip === undefined) return <p className="clips-empty">Cargando clip...</p>;
+  if (clip === undefined) return <p className="loading">Cargando clip…</p>;
 
   return (
-    <div className="page-content clip-public-page">
+    <div className="page clip-public-page">
       {clip === null ? (
-        <p className="clips-empty">Este clip no está disponible.</p>
+        <p className="empty">Este clip no está disponible.</p>
       ) : (
-        <div className="clip-card">
+        <div className="clip-post">
           <video
             className="clip-video"
             src={clip.video_url}
@@ -36,7 +36,7 @@ export default function ClipPublico() {
             preload="metadata"
             controlsList="nodownload"
           />
-          <div className="clip-info">
+          <div className="clip-head-text">
             <span className="clip-players">
               {clip.player1} vs {clip.player2}
             </span>
@@ -54,7 +54,7 @@ export default function ClipPublico() {
           </div>
         </div>
       )}
-      <Link className="clip-download clip-public-app" to="/">
+      <Link className="btn btn-secondary clip-public-app" to="/">
         Abrir PoolAppDeluxe
       </Link>
     </div>

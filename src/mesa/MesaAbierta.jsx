@@ -67,13 +67,13 @@ export default function MesaAbierta() {
     }
   }
 
-  if (table === undefined || authLoading) return <div className="page-content mesa-page">Cargando mesa...</div>;
-  if (table === null) return <div className="page-content mesa-page">Este QR no corresponde a ninguna mesa.</div>;
+  if (table === undefined || authLoading) return <div className="page mesa-page">Cargando mesa...</div>;
+  if (table === null) return <div className="page mesa-page">Este QR no corresponde a ninguna mesa.</div>;
 
   const canStart = (me || myName.trim()) && (rivalId || rivalName.trim());
 
   return (
-    <div className="page-content mesa-page">
+    <div className="page mesa-page">
       <p className="mesa-club">{table.club?.name}</p>
       <h1 className="mesa-label">{table.label}</h1>
 
@@ -84,7 +84,7 @@ export default function MesaAbierta() {
           <button className="btn" onClick={() => navigate("/login", { state: { from: location } })}>
             Entrar con mi celu
           </button>
-          <button className="btn" disabled={busy} onClick={handleGuest}>
+          <button className="btn btn-secondary" disabled={busy} onClick={handleGuest}>
             Jugar como invitado
           </button>
           <p className="mesa-hint">Como invitado podés jugar, pero tu partida no queda en un perfil ni podés guardar clips.</p>

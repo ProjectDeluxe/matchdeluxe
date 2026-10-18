@@ -1,179 +1,73 @@
+/* Pantalla de la partida en la PC (marcador + QR para el celu) */
 .partida-pc {
-  padding: 32px 24px;
-  color: white;
-  font-family: 'Orbitron', sans-serif;
-  max-width: 700px;
+  max-width: 760px;
   margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
 }
 
-.loading-text {
-  color: rgba(255,255,255,0.5);
-  font-family: 'Orbitron', sans-serif;
-  text-align: center;
-  margin-top: 80px;
-  letter-spacing: 2px;
-}
+.loading-text { color: var(--muted); text-align: center; margin-top: 80px; }
 
-/* Encabezado */
 .partida-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 32px;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 8px 16px;
 }
-
-.partida-title {
-  font-size: 1.4rem;
-  font-weight: 700;
-  letter-spacing: 2px;
-  margin: 0;
-}
-
-.vs {
-  color: rgba(255,255,255,0.4);
-  font-size: 1rem;
-  margin: 0 8px;
-}
+.partida-title { font-size: 1.6rem; }
+.vs { color: var(--muted); font-weight: 600; margin: 0 6px; }
+.partida-mesa { color: var(--muted); font-size: 0.9rem; }
 
 .partida-status {
-  font-size: 0.7rem;
-  letter-spacing: 2px;
-  padding: 4px 10px;
-  border-radius: 20px;
+  font-size: 0.8rem;
   font-weight: 700;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: var(--surface);
 }
+.status-active { color: var(--accent); }
+.status-finished { color: var(--muted); }
 
-.status-active {
-  background: rgba(50, 200, 100, 0.2);
-  border: 1px solid rgba(50, 200, 100, 0.5);
-  color: #50e090;
-}
-
-.status-finished {
-  background: rgba(255,255,255,0.1);
-  border: 1px solid rgba(255,255,255,0.2);
-  color: rgba(255,255,255,0.5);
-}
-
-/* Body: marcador + QR lado a lado en desktop */
 .partida-body {
   display: flex;
   flex-direction: column;
-  gap: 32px;
-  align-items: center;
+  gap: 24px;
+  align-items: stretch;
+}
+@media (min-width: 700px) {
+  .partida-body { flex-direction: row; align-items: center; }
+  .partida-body > * { flex: 1; }
 }
 
-@media (min-width: 600px) {
-  .partida-body {
-    flex-direction: row;
-    align-items: flex-start;
-    justify-content: center;
-  }
-}
-
-/* Marcador */
 .score-board {
   display: flex;
   align-items: center;
-  gap: 24px;
-  background: rgba(0,0,0,0.5);
-  border: 1px solid rgba(255,255,255,0.12);
-  border-radius: 16px;
-  padding: 28px 32px;
-  min-width: 280px;
   justify-content: center;
+  gap: 28px;
+  padding: 32px 24px;
+  border-radius: var(--radius-lg);
+  background: var(--surface);
 }
+.score-side { display: flex; flex-direction: column; align-items: center; gap: 8px; min-width: 0; }
+.score-avatar { width: 56px; height: 56px; border-radius: 50%; object-fit: cover; }
+.score-name { font-weight: 600; color: var(--muted); text-align: center; overflow-wrap: anywhere; }
+.score-number { font-size: 4rem; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
+.score-divider { font-size: 2rem; color: var(--muted); }
 
-.score-side {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-}
+.qr-section { display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; }
+.qr-label { color: var(--muted); font-size: 0.9rem; }
+.qr-wrapper { background: #fff; padding: 16px; border-radius: var(--radius); border: 1px solid var(--line); }
+.qr-url { font-size: 0.7rem; color: var(--muted); word-break: break-all; max-width: 240px; }
 
-.score-avatar {
-  width: 52px;
-  height: 52px;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 2px solid rgba(255,255,255,0.3);
-}
-
-.score-name {
-  font-size: 0.8rem;
-  letter-spacing: 1px;
-  color: rgba(255,255,255,0.7);
-  text-transform: uppercase;
-}
-
-.score-number {
-  font-size: 3.5rem;
-  font-weight: 800;
-  line-height: 1;
-  color: white;
-}
-
-.score-divider {
-  font-size: 2.5rem;
-  color: rgba(255,255,255,0.3);
-  margin-bottom: 8px;
-}
-
-/* QR */
-.qr-section {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-}
-
-.qr-label {
-  font-size: 0.75rem;
-  color: rgba(255,255,255,0.5);
-  letter-spacing: 1px;
-  text-align: center;
-  margin: 0;
-}
-
-.qr-wrapper {
-  background: white;
-  padding: 16px;
-  border-radius: 12px;
-}
-
-.qr-url {
-  font-size: 0.6rem;
-  color: rgba(255,255,255,0.3);
-  letter-spacing: 0.5px;
-  text-align: center;
-  margin: 0;
-  word-break: break-all;
-  max-width: 220px;
-}
-
-/* Ganador */
 .winner-banner {
-  background: rgba(255, 200, 0, 0.15);
-  border: 1px solid rgba(255, 200, 0, 0.4);
-  border-radius: 12px;
-  color: #ffd700;
-  font-size: 1.1rem;
-  letter-spacing: 2px;
-  padding: 16px 28px;
+  padding: 18px 24px;
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  font-size: 1.2rem;
+  font-weight: 800;
   text-align: center;
 }
 
-/* Volver */
-.back-btn {
-  margin-top: 32px;
-  font-size: 0.85rem;
-  letter-spacing: 1px;
-}
-
-.partida-mesa {
-  font-size: 0.75rem;
-  letter-spacing: 2px;
-  color: rgba(255,255,255,0.6);
-}
+.back-btn { align-self: flex-start; }

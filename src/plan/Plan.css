@@ -1,78 +1,36 @@
-.plan-page {
-  max-width: 900px;
-  margin: 0 auto;
-}
-
-.plan-error {
-  color: #ff7a7a;
-}
+.plan-error { color: var(--danger); }
 
 .plan-current {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  margin-bottom: 24px;
+  padding: 18px;
+  border-radius: var(--radius-lg);
+  background: var(--surface);
 }
-
-.plan-current-name {
-  font-size: 1.2rem;
-  color: #50e090;
-}
-
-.plan-current-usage {
-  font-size: 0.8rem;
-  color: rgba(255,255,255,0.6);
-}
+.plan-current-name { font-size: 1.25rem; font-weight: 800; }
+.plan-current-usage { font-size: 0.9rem; color: var(--muted); }
 
 .plan-grid {
   list-style: none;
-  padding: 0;
   margin: 0;
+  padding: 0;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 16px;
+  gap: 12px;
 }
 
 .plan-card {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 16px;
-  text-align: left;
-  border: 1px solid rgba(255,255,255,0.2);
-  background: rgba(0,0,0,0.35);
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
 }
-
-.plan-card-current {
-  border-color: #50e090;
-}
-
-.plan-name {
-  font-size: 1rem;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-}
-
-.plan-price {
-  font-size: 0.85rem;
-  color: rgba(255,255,255,0.7);
-}
-
-.plan-limits {
-  margin: 0;
-  padding-left: 18px;
-  font-size: 0.8rem;
-  color: rgba(255,255,255,0.6);
-}
-
-.plan-tag {
-  align-self: flex-start;
-  font-size: 0.7rem;
-  color: #50e090;
-  text-transform: uppercase;
-  letter-spacing: 2px;
-}
-
-.plan-btn {
-  align-self: flex-start;
-}
+.plan-card-current { border-color: var(--text); }
+.plan-name { font-weight: 800; font-size: 1.1rem; }
+.plan-price { color: var(--muted); }
+.plan-limits { margin: 0; padding-left: 18px; font-size: 0.875rem; color: var(--muted); }
+.plan-tag { align-self: flex-start; font-size: 0.8rem; font-weight: 700; }
+.plan-btn { align-self: flex-start; }

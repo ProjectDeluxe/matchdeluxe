@@ -1,157 +1,86 @@
-.clubs-page {
-  max-width: 700px;
-  margin: 0 auto;
-  font-family: 'Orbitron', sans-serif;
-}
+.clubs-page { gap: 20px; }
 
-.clubs-error {
-  color: #ff7a7a;
-  margin-bottom: 16px;
-}
-
-.clubs-empty {
-  color: rgba(255,255,255,0.5);
-  font-size: 0.85rem;
-}
+.clubs-error { color: var(--danger); font-size: 0.875rem; }
+.clubs-notice { color: var(--success); font-size: 0.875rem; }
+.clubs-empty { color: var(--muted); font-size: 0.9rem; }
 
 .club-form,
 .table-form {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
-  justify-content: center;
-  margin-bottom: 24px;
 }
-
-.table-form {
-  margin: 12px 0 0;
-  justify-content: flex-start;
-}
-
 .club-form input,
 .table-form input,
-.table-form select {
-  flex: 1 1 180px;
-  padding: 10px 12px;
-  background: rgba(255,255,255,0.08);
-  border: 1px solid rgba(255,255,255,0.3);
-  color: white;
-}
-
-.table-form .btn {
-  font-size: 0.9rem;
-  padding: 8px 16px;
-}
+.table-form select { flex: 1 1 180px; }
+.table-form select { flex: 0 1 auto; width: auto; }
+.club-form .btn,
+.table-form .btn { flex: 0 0 auto; }
 
 .clubs-list,
-.tables-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
+.tables-list { list-style: none; margin: 0; padding: 0; }
+.clubs-list { display: flex; flex-direction: column; gap: 16px; }
 
 .club-card {
-  text-align: left;
-  border: 1px solid rgba(255,255,255,0.2);
-  background: rgba(0,0,0,0.35);
-  padding: 16px 20px;
-  margin-bottom: 16px;
-}
-
-.club-header {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: 18px;
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 12px;
-  margin-bottom: 12px;
+  flex-direction: column;
+  gap: 14px;
 }
 
-.club-name {
-  margin: 0;
-  font-size: 1.1rem;
-  letter-spacing: 2px;
-}
-
-.club-meta {
-  margin: 4px 0 0;
-  font-size: 0.75rem;
-  color: rgba(255,255,255,0.5);
-}
+.club-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.club-name { font-size: 1.25rem; }
+.club-meta { margin-top: 2px; font-size: 0.875rem; color: var(--muted); }
 
 .table-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 12px;
-  padding: 6px 0;
-  border-bottom: 1px solid rgba(255,255,255,0.08);
+  gap: 8px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
 }
-
-.table-row > span:first-child {
-  flex: 1;
+.table-row > span:first-child { flex: 1 1 100%; font-weight: 700; }
+@media (min-width: 600px) {
+  .table-row > span:first-child { flex: 1 1 auto; }
 }
 
 .table-status {
-  font-size: 0.65rem;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  padding: 2px 8px;
-  border-radius: 20px;
-  border: 1px solid rgba(255,255,255,0.2);
-  color: rgba(255,255,255,0.5);
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--muted);
 }
-
-.table-online {
-  border-color: rgba(50, 200, 100, 0.5);
-  color: #50e090;
-}
+.table-online { color: var(--success); }
 
 .table-copy {
-  background: none;
-  border: 1px solid rgba(255,255,255,0.2);
-  color: rgba(255,255,255,0.6);
-  font-size: 0.65rem;
-  letter-spacing: 1px;
-  padding: 2px 8px;
-  cursor: pointer;
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--text);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+.table-copy:hover { background: var(--surface); }
+
+.action-danger {
+  min-height: 34px;
+  min-width: 34px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--danger);
 }
 
-.table-copy:hover {
-  color: white;
-  border-color: rgba(255,255,255,0.5);
-}
+.table-qr { display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; }
+.table-qr svg { padding: 10px; background: #fff; border-radius: 10px; }
+.table-qr a { font-size: 0.75rem; word-break: break-all; color: var(--muted); }
 
-.clubs-notice {
-  color: #50e090;
-  margin-bottom: 16px;
-}
-
-.table-qr {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  margin-top: 12px;
-}
-
-.table-qr svg {
-  padding: 8px;
-  background: #fff;
-}
-
-.table-qr a {
-  font-size: 0.7rem;
-  word-break: break-all;
-  color: rgba(255,255,255,0.7);
-}
-
-.table-form select {
-  flex: 0 1 auto;
-}
-
-.log-match-form input[type="number"] {
-  flex: 0 1 90px;
-}
-
-.log-match-form select {
-  flex: 1 1 140px;
-}
+.log-match-form input[type="number"] { flex: 0 1 100px; }
+.log-match-form select { flex: 1 1 140px; width: auto; }

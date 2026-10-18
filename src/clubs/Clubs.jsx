@@ -52,7 +52,7 @@ function LogMatchForm({ club, players, onSubmit }) {
           ))}
         </select>
       )}
-      <button className="btn" type="submit">Cargar partido jugado</button>
+      <button className="btn btn-secondary" type="submit">Cargar partido jugado</button>
     </form>
   );
 }
@@ -78,6 +78,7 @@ export default function Clubs() {
   const [form, setForm]         = useState({ name: "", address: "", contact: "" });
   const [newLabels, setNewLabels] = useState({}); // club_id -> texto del input "nueva mesa"
   const [copiedId, setCopiedId] = useState(null);
+  const [showCreate, setShowCreate] = useState(false);
 
   async function loadClubs() {
     try {
@@ -179,16 +180,16 @@ export default function Clubs() {
     run(() => setTableAvailability(table.id, next));
   }
 
-  if (loading || !account) return <p>Cargando clubs...</p>;
+  if (loading || !account) return <p className="loading">Cargando clubs…</p>;
   if (account.is_anonymous) {
-    return <p className="page-content">Para crear o manejar un club, entrá con tu celu.</p>;
+    return <p className="page empty">Para crear o manejar un club, entrá con tu celu.</p>;
   }
 
   const visibleClubs = isAdmin ? clubs : clubs.filter((c) => myClubIds.includes(c.id));
 
   return (
-    <div className="page-content clubs-page">
-      <h1>Clubs y mesas</h1>
+    <div className="page clubs-page">
+      <h1>{isAdmin ? "Clubs y mesas" : visibleClubs.length > 1 ? "Mis clubs" : "Mi club"}</h1>
 
       {error && <p className="clubs-error">{error}</p>}
       {notice && <p className="clubs-notice">{notice}</p>}
@@ -197,6 +198,10 @@ export default function Clubs() {
         <p className="clubs-empty">¿Tenés un club? Crealo acá: vas a poder cargar sus mesas y jugadores, y darle acceso a tu equipo.</p>
       )}
 
+      {/* Quien ya tiene club ve el alta de otro club recién si la pide */}
+      {visibleClubs.length > 0 && !showCreate ? (
+        <button type="button" className="link-btn" onClick={() => setShowCreate(true)}>+ Crear otro club</button>
+      ) : (
       <form className="club-form" onSubmit={handleCreateClub}>
         <input
           type="text"
@@ -216,8 +221,9 @@ export default function Clubs() {
           value={form.contact}
           onChange={(e) => setForm({ ...form, contact: e.target.value })}
         />
-        <button className="btn" type="submit">+ Crear club</button>
+        <button className="btn" type="submit">Crear club</button>
       </form>
+      )}
 
       {isAdmin && visibleClubs.length === 0 && <p className="clubs-empty">Todavía no hay clubs cargados.</p>}
 
@@ -274,7 +280,7 @@ export default function Clubs() {
                 value={newLabels[club.id] ?? ""}
                 onChange={(e) => setNewLabels((l) => ({ ...l, [club.id]: e.target.value }))}
               />
-              <button className="btn" type="submit">+ Mesa</button>
+              <button className="btn btn-secondary" type="submit">Agregar mesa</button>
             </form>
 
             {canGrantAccess(club.id) && (
@@ -292,7 +298,7 @@ export default function Clubs() {
                   <option value="staff">Staff</option>
                   <option value="owner">Dueño</option>
                 </select>
-                <button className="btn" type="submit">Dar acceso</button>
+                <button className="btn btn-secondary" type="submit">Dar acceso</button>
               </form>
             )}
 

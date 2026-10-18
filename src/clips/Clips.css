@@ -1,33 +1,53 @@
-.clips-page {
-  max-width: 900px;
-  margin: 0 auto;
-}
+/* Feed de clips: una columna, como un feed de fotos */
+.feed-page { max-width: 560px; }
 
-.clips-empty,
-.clips-error {
-  color: rgba(255,255,255,0.5);
-  font-size: 0.85rem;
-}
-
-.clips-error {
-  color: #ff7a7a;
-}
-
-.clips-grid {
+.clip-feed {
+  max-width: 560px;
+  width: 100%;
   list-style: none;
-  padding: 0;
   margin: 0;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 16px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
 }
 
-.clip-card {
-  text-align: left;
-  border: 1px solid rgba(255,255,255,0.2);
-  background: rgba(0,0,0,0.35);
-  overflow: hidden;
+.clip-post {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
+
+.clip-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.clip-avatars { display: flex; flex: 0 0 auto; }
+.clip-avatar {
+  width: 34px;
+  height: 34px;
+  font-size: 0.85rem;
+  border: 2px solid var(--bg);
+}
+.clip-avatar + .clip-avatar { margin-left: -12px; }
+
+.clip-head-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.clip-players {
+  font-weight: 700;
+  font-size: 0.95rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.clip-meta { font-size: 0.8rem; color: var(--muted); }
 
 .clip-video,
 .clip-placeholder {
@@ -35,97 +55,60 @@
   width: 100%;
   aspect-ratio: 16 / 9;
   background: #000;
+  border-radius: var(--radius);
 }
 
 .clip-placeholder {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: rgba(255,255,255,0.4);
-  font-size: 0.75rem;
-  letter-spacing: 2px;
-  text-transform: uppercase;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 0.875rem;
 }
+.clip-placeholder-error { color: var(--danger); }
 
-.clip-placeholder.clip-error {
-  color: #ff7a7a;
-}
-
-.clip-info {
+.clip-actions {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 10px 12px;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+  margin-left: -8px;
 }
 
-.clip-players {
-  font-size: 0.9rem;
-}
-
-.clip-meta {
-  font-size: 0.7rem;
-  color: rgba(255,255,255,0.5);
-}
-
-.clip-download {
-  font-size: 0.75rem;
-  color: #50e090;
-  text-decoration: none;
-  align-self: flex-start;
-}
-
-.clip-placeholder.clip-expired {
-  color: rgba(255,255,255,0.3);
-}
-
-.clip-download-locked {
-  color: rgba(255,255,255,0.5);
-}
-
-button.clip-download {
-  background: none;
+.clip-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 0 8px;
   border: none;
-  padding: 0;
-  font-family: inherit;
-  cursor: pointer;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+.clip-action:hover { background: var(--surface); opacity: 1; }
+
+.clip-action-note {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 8px;
+  font-size: 0.85rem;
+  color: var(--muted);
 }
 
-button.clip-download:disabled {
-  cursor: default;
-  opacity: 0.6;
+.clip-foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  font-size: 0.8rem;
+  color: var(--muted);
 }
 
-.clip-download-error {
-  font-size: 0.75rem;
-  color: #ff7a7a;
-}
-
-.clip-public-badge {
-  margin-left: 8px;
-  padding: 1px 6px;
-  font-size: 0.65rem;
-  color: #50e090;
-  border: 1px solid #50e090;
-  vertical-align: middle;
-}
-
+/* Página pública de un clip (/c/:id) */
 .clip-public-page {
   max-width: 640px;
-  margin: 0 auto;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.clip-public-app {
-  align-self: center;
-}
-
-.feed-filter {
-  margin-bottom: 16px;
-}
-
-.feed-more {
-  display: block;
-  margin: 16px auto 0;
+  padding-top: 8px;
 }

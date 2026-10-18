@@ -1,56 +1,28 @@
+/* Página del QR de la mesa: tiene que entrar entera en el ancho del celu */
 .mesa-page {
-  max-width: 420px;
+  max-width: 460px;
   margin: 0 auto;
-  font-family: 'Orbitron', sans-serif;
-}
-
-.mesa-club {
-  margin: 0;
-  font-size: 0.8rem;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  color: rgba(255,255,255,0.6);
-}
-
-.mesa-label {
-  margin-top: 4px;
-}
-
-.mesa-msg,
-.mesa-hint {
-  color: rgba(255,255,255,0.6);
-  font-size: 0.8rem;
-}
-
-.mesa-entry,
-.mesa-form {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 16px;
 }
+.mesa-club { color: var(--muted); font-weight: 600; }
+.mesa-label { font-size: 2rem; }
+.mesa-msg,
+.mesa-hint { color: var(--muted); font-size: 0.9rem; }
+
+.mesa-entry,
+.mesa-form { display: flex; flex-direction: column; gap: 12px; }
 
 .mesa-field {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  text-align: left;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.875rem;
+  font-weight: 600;
 }
+.mesa-field > span { color: var(--muted); }
+.mesa-field strong { font-size: 1.1rem; }
 
-.mesa-form input,
-.mesa-form select {
-  padding: 10px 12px;
-  background: rgba(255,255,255,0.08);
-  border: 1px solid rgba(255,255,255,0.3);
-  color: white;
-}
-
-.mesa-field select,
-.mesa-field input {
-  flex: 1;
-}
-
-.mesa-error {
-  color: #ff7a7a;
-  font-size: 0.8rem;
-}
+.mesa-page .btn { width: 100%; }
+.mesa-error { color: var(--danger); font-size: 0.875rem; }

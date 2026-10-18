@@ -66,8 +66,7 @@ export default function Login() {
   return (
     <div className="login-wrapper">
       <div className="login-card">
-        <div className="login-logo">🎱</div>
-        <h1 className="login-title">POOLAPPDELUXE</h1>
+        <h1 className="login-title">PoolAppDeluxe</h1>
 
         {step === "phone" ? (
           <>
@@ -98,7 +97,7 @@ export default function Login() {
                 className="login-btn"
                 disabled={loading || !phone.trim()}
               >
-                {loading ? "Enviando..." : "RECIBIR CÓDIGO"}
+                {loading ? "Enviando…" : "Recibir código"}
               </button>
             </form>
           </>
@@ -124,7 +123,7 @@ export default function Login() {
                 className="login-btn"
                 disabled={loading || otp.length < 6}
               >
-                {loading ? "Verificando..." : "INGRESAR"}
+                {loading ? "Verificando…" : "Entrar"}
               </button>
               <button
                 type="button"
@@ -147,7 +146,7 @@ export default function Login() {
               className="dev-btn"
               onClick={() => { devLogin(); navigate(from, { replace: true }); }}
             >
-              🚧 Entrar sin cuenta
+              Entrar sin cuenta
             </button>
           </div>
         )}

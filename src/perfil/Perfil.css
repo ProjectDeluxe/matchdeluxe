@@ -1,0 +1,8 @@
+.options button.list-row {
+  width: 100%;
+  border: none;
+  background: transparent;
+  text-align: left;
+}
+.options button.list-row:hover { background: var(--surface); }
+.option-danger .list-row-title { color: var(--danger); }

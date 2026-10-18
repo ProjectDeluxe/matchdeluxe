@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { usePlayers } from "../context/PlayerContext";
 import { useAuth } from "../context/AuthContext";
 
@@ -25,11 +25,9 @@ export default function NuevoJugador() {
   if (window.__creatingPlayer) return;
   window.__creatingPlayer = true;
 
-  console.log("SUBMIT PLAYER:", name);
-
   try {
     await addPlayer(name, null, { club_id: selectedClubId || null, phone: phone.trim() || null });
-    navigate("/jugadores");
+    navigate("/buscar");
   } catch (err) {
     setError(err.message.replace(/^PLAN_LIMIT: /, ""));
   } finally {
@@ -38,36 +36,38 @@ export default function NuevoJugador() {
 }
 
   return (
-    <div className="page-content">
-      <h1>Nuevo jugador</h1>
+    <div className="page page-narrow">
+      <div className="section">
+        <Link to="/buscar" className="muted">← Buscar</Link>
+        <h1>Nuevo jugador</h1>
+      </div>
 
-      <form onSubmit={handleSubmit}>
-        <input
-          type="text"
-          placeholder="Nombre del jugador"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-        />
+      <form className="form" onSubmit={handleSubmit}>
+        <label className="field">
+          <span>Nombre</span>
+          <input type="text" placeholder="Nombre del jugador" value={name} onChange={(e) => setName(e.target.value)} required />
+        </label>
 
-        <input
-          type="tel"
-          placeholder="Celu (opcional)"
-          value={phone}
-          onChange={(e) => setPhone(e.target.value)}
-        />
+        <label className="field">
+          <span>Celu (opcional, para que después reclame su historial)</span>
+          <input type="tel" placeholder="Ej: 1134567890" value={phone} onChange={(e) => setPhone(e.target.value)} />
+        </label>
 
         {(clubs.length > 1 || account?.is_admin) && (
-          <select value={selectedClubId} onChange={(e) => setClubId(e.target.value)}>
-            {account?.is_admin && <option value="">Sin club</option>}
-            {clubs.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
+          <label className="field">
+            <span>Club</span>
+            <select value={selectedClubId} onChange={(e) => setClubId(e.target.value)}>
+              {account?.is_admin && <option value="">Sin club</option>}
+              {clubs.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </label>
         )}
 
-        <button className="btn" type="submit">
-          Crear
+        {error && <p className="error">{error}</p>}
+        <button className="btn btn-block" type="submit">
+          Crear jugador
         </button>
       </form>
-      {error && <p className="clubs-error">{error}</p>}
     </div>
   );
 }

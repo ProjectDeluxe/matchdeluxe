@@ -57,7 +57,7 @@ export default function Partida() {
           </span>
         )}
         <span className={`partida-status ${finished ? "status-finished" : "status-active"}`}>
-          {finished ? "FINALIZADA" : "EN CURSO"}
+          {finished ? "Terminada" : "En curso"}
         </span>
       </div>
 
@@ -102,14 +102,14 @@ export default function Partida() {
         {/* Ganador */}
         {finished && match.winner_id && (
           <div className="winner-banner">
-            🏆 Ganador:{" "}
+            Ganó{" "}
             {match.winner_id === p1?.id ? p1?.name : p2?.name}
           </div>
         )}
       </div>
 
-      <button className="btn back-btn" onClick={() => navigate("/historial")}>
-        ← Volver al historial
+      <button className="btn btn-secondary back-btn" onClick={() => navigate("/partida")}>
+        ← Volver
       </button>
     </div>
   );

@@ -1,6 +1,6 @@
 # PoolAppDeluxe — Roadmap y arquitectura (v1)
 
-Documento vivo. Última actualización: 2026-10-18 (Fase 3 cerrada, pasos 1 a 4 de la Fase 4 en producción y paso 5 en código), a partir de la revisión del código existente y la definición de producto con Agus.
+Documento vivo. Última actualización: 2026-10-18 (Fases 3 y 4 cerradas; rediseño visual y de navegación, 6.10), a partir de la revisión del código existente y la definición de producto con Agus.
 
 > **Actualización 2026-10-17:** Fase 3 cerrada. Agus probó en la mesa la repetición sin recorte con OBS real, probó las cuentas (crear un club con una cuenta que no es admin, darle acceso a un staff, cargar un partido jugado, el límite del plan gratis y el reclamo por celu; del invitado por QR se probó la página, falta una partida entera) y confirmó Anonymous sign-ins en Supabase. Las variables de Vercel del job de borrado se habían dado por confirmadas pero no estaban: se cargaron el 2026-10-17 al desplegar el paso 2 de la Fase 4 (6.3, 6.9). El cobro (proveedor y precios) no bloquea el piloto: mientras tanto los planes pagos se activan a mano. Lo que queda abierto de la Fase 3 está en 6.8 y el plan de la Fase 4 en 6.9.
 
@@ -370,8 +370,13 @@ Esto depende de cosas que todavía no existen (login/panel de club, Fase 1 del m
 - Vista de todas las mesas desde una PC maestra.
 - Edición automática con IA del partido completo.
 - **Tele de la mesa abierta con QR (pedido de Agus, 2026-10-17):** al abrir una mesa, el agente pone en la tele el vivo de la mesa en grande con el QR de la mesa, para entrar con cuenta o como invitado, y al arrancar la partida pasa a la pantalla de partida de siempre. Va junto con el HUD de la partida (marcador y QR) integrado en la transmisión de OBS, que se habló en otra conversación y todavía no está en este documento.
-- **Rediseño visual de toda la app (pedido de Agus, 2026-10-17):** hoy se ve mal en el celu y en la PC. Por ejemplo, la pantalla de la mesa por QR (nueva partida) se sale del ancho del celu: se cortan el nombre, el selector de rival y el campo del celu. Hay que revisar el CSS completo, mobile primero. Va apenas se cierre la Fase 4 (Agus, 2026-10-18).
+- **Rediseño visual de toda la app (pedido de Agus, 2026-10-17) — hecho, ver 6.10:** hoy se ve mal en el celu y en la PC. Por ejemplo, la pantalla de la mesa por QR (nueva partida) se sale del ancho del celu: se cortan el nombre, el selector de rival y el campo del celu. Hay que revisar el CSS completo, mobile primero. Va apenas se cierre la Fase 4 (Agus, 2026-10-18).
 - `public/manifest.json` pide `/icon-192.png`, que no está en `public/` (el navegador avisa del error en la consola). Va con el rediseño.
+- **El QR del control abre el navegador y no la app instalada (Agus, 2026-10-18):** Agus tiene la app instalada en la pantalla de inicio, en pantalla completa. Si escanea el QR del control con la cámara del celu, se abre una pestaña del navegador en vez de la app y le pide loguearse de nuevo, así que no parece una app nativa. Por qué pasa: la cámara siempre abre los links en el navegador. En iPhone, además, la app instalada no comparte la sesión con Safari, y eso no tiene arreglo en una web. En Android, Chrome a veces puede abrir la app instalada si el link está dentro de su `scope`. Opciones, de menor a mayor esfuerzo:
+  1. Un botón "Escanear QR" dentro de la app, que usa la cámara con `BarcodeDetector` o una librería tipo jsQR. Así no se sale nunca de la app ni se pierde la sesión. Es lo más barato, y anda en iPhone y en Android.
+  2. En Android, agregar `id`, `scope` y `launch_handler` al `manifest.json` para que los links de la app abran la app instalada. No sirve para iPhone.
+  3. Una app nativa real (por ejemplo con Capacitor) que tome los links de la app con Universal Links / App Links. Lo resuelve del todo, pero agrega tiendas, revisiones y builds. Se evalúa más adelante.
+  Recomendación: la opción 1 (más la 2, que es casi gratis) cuando se cierre el rediseño.
 
 ### 6.8 Fase 3 — cierre (2026-10-17)
 
@@ -446,21 +451,35 @@ Fase 3 cerrada: planes y límites (6.3), modelo de cuentas (6.4), vivo y repetic
 - **Probado por Agus (2026-10-18):** funciona, incluida la vista previa en WhatsApp. Antes, con un id inventado: `/c/<id>` da la vista previa genérica, `public` 404, `thumb` redirige a `og-default.jpg`.
 - **Pruebas:** publicar un clip y tocar Compartir; abrir el link en una pestaña privada (se ve sin login, sin descarga); mandarse el link por WhatsApp y ver la miniatura con "Jugador vs Jugador"; despublicarlo y abrir el link otra vez ("Este clip no está disponible"); un link con un id inventado da lo mismo.
 
-**Paso 5 — hecho en código (2026-10-18), falta pasar a producción:**
+**Paso 5 — hecho y en producción (2026-10-18, `dfa92bc`):**
 - Pantalla `/feed` (ícono 📺 en la barra): los clips públicos de todos, del más nuevo al más viejo por `published_at`, de a 20 con "Cargar más", y filtro por club (solo aparecen los clubs que tienen clips públicos). Solo con cuenta real: a un invitado le dice "Creá tu cuenta para ver el feed". Usa la misma grilla que Clips: Compartir, Descargar según el plan y Despublicar para quien puede (paso 3).
 - `api/clips/feed.js`: pide sesión de cuenta real (un invitado recibe 403), devuelve solo clips públicos, listos y sin vencer, con video y miniatura firmados por 1 hora, sin ids de usuarios ni de jugadores. Un clip sin mesa no aparece en el feed (el filtro por club sale de la mesa).
 - **Reportar:** botón 🚩 Reportar en los clips del feed y en `/c/:id` para quien tiene cuenta, con un motivo opcional. `api/clips/report.js` guarda un reporte por usuario y clip en la tabla nueva `clip_reports` (si ya lo había reportado: "Ya lo reportaste"). No hace nada automático: el admin los revisa desde el SQL Editor (`select * from clip_reports order by created_at desc`). La moderación de verdad sigue en la Fase 5.
 - Migración `supabase/migrations/2026-10-18-fase4-feed.sql` (idempotente, también en `supabase-schema.sql` v1.9): tabla `clip_reports` con RLS y sin políticas (la app no la lee ni la escribe; escribe la función con la service key) e índice de `clips` por `published_at` para el feed.
 - **Para pasar a producción:** correr la migración ANTES del push (`report.js` escribe en `clip_reports`), después push y esperar que Vercel diga Ready.
+- **Pasado a producción el 2026-10-18:** Agus corrió la migración antes del push. **Probado por Agus (2026-10-18):** funciona todo.
 - **Pruebas:** con una cuenta, entrar al feed y ver los clips publicados; filtrar por club; con más de 20 publicados, "Cargar más"; como invitado (pestaña privada desde el QR de una mesa) el feed pide cuenta; reportar un clip desde el feed y desde `/c/:id`, y la segunda vez "Ya lo reportaste"; ver el reporte en `clip_reports`; despublicar desde el feed (como jugador) y que desaparezca al recargar.
 
 **Costo a vigilar:** la transferencia, no el storage. Con Supabase Pro, 250 GB son ~96.000 reproducciones de un clip de 1 minuto por mes (6.3).
 
 **Fase 5 — Endurecer para producción real.** Ajustar las políticas RLS (hoy abiertas a "cualquier autenticado"), moderación de contenido público, monitoreo de mini-PCs (saber si una cámara se cayó), limpieza del código muerto y validaciones pendientes del punto 3.
 
+### 6.10 Rediseño visual y de navegación (2026-10-18)
+
+- **Estilo:** minimalista y neutral al deporte. Fondo claro u oscuro según el dispositivo, un solo acento azul, letra Plus Jakarta Sans, sin foto de fondo ni emojis.
+- **Barra de 5 lugares:**
+  - **Inicio:** feed de clips en una columna, tipo Instagram. Reemplaza Clips y Feed; `/clips` y `/feed` redirigen a `/`.
+  - **Buscar:** jugadores y clubs en pestañas. Reemplaza Jugadores y la lupa. Página nueva de club, `/club/:id`, con sus mesas, jugadores y clips públicos.
+  - **Partida:** nueva partida, partidas en curso e historial. Reemplaza Historial; `/historial` redirige a `/partida`.
+  - **Mi club:** aparece solo si la cuenta maneja un club. Si no, "Crear mi club" está en Perfil > Opciones.
+  - **Perfil:** perfil propio con estadísticas, partidas, clips y Opciones (club, suscripción, cerrar sesión).
+- El QR de la mesa sigue llevando directo al control.
+- No toca la base de datos.
+- **Pendiente:** probarlo entero en producción, y lo del QR que abre el navegador (6.7).
+
 ## 7. Próximo paso concreto
 
-**Actualizado 2026-10-18:** Fases 1, 2 y 3 cerradas (lo que queda abierto de la 3, incluido el cobro, en 6.8). Siguiente: Fase 4, arrancando por el paso 1 de 6.9 (bucket privado y links firmados), que ya está en producción y probado. El paso 2 (links firmados por el servidor y descarga según plan) también está en producción y funciona. El paso 3 (publicar y despublicar) también está en producción y probado. El paso 4 (página de clip compartible, `/c/:id`, con vista previa para WhatsApp) también está en producción y probado (6.9). El paso 5 (feed de clips públicos y Reportar) está en código: falta correr su migración, desplegarlo y probarlo (6.9). Con eso se cierra la Fase 4 y sigue el rediseño visual (6.7).
+**Actualizado 2026-10-18:** Fases 1, 2 y 3 cerradas (lo que queda abierto de la 3, incluido el cobro, en 6.8). Siguiente: Fase 4, arrancando por el paso 1 de 6.9 (bucket privado y links firmados), que ya está en producción y probado. El paso 2 (links firmados por el servidor y descarga según plan) también está en producción y funciona. El paso 3 (publicar y despublicar) también está en producción y probado. El paso 4 (página de clip compartible, `/c/:id`, con vista previa para WhatsApp) también está en producción y probado (6.9). El paso 5 (feed de clips públicos y Reportar) también está en producción y probado (6.9). **Fase 4 cerrada (2026-10-18).** Rediseño visual hecho (6.10), falta probarlo entero en producción; después, la Fase 5.
 
 ## 8. Expansión a otros deportes (tenis y lo que siga)
 

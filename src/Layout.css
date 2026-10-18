@@ -1,0 +1,17 @@
+.app-main {
+  min-height: 100vh;
+  padding: 24px 20px;
+}
+
+/* Lugar para la barra de abajo (celu) o la lateral (PC) */
+.app-main.with-nav {
+  padding-bottom: calc(var(--nav-h) + 32px + env(safe-area-inset-bottom));
+}
+
+@media (min-width: 900px) {
+  .app-main { padding: 40px 32px; }
+  .app-main.with-nav {
+    padding-left: calc(var(--sidebar-w) + 32px);
+    padding-bottom: 40px;
+  }
+}

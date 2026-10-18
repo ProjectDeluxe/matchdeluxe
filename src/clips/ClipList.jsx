@@ -1,65 +1,87 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { getClipDownloadUrl, reportClip, setClipPublic } from "../services/ClipService";
+import { DownloadIcon, FlagIcon, GlobeIcon, ShareIcon } from "../components/Icons.jsx";
 import "./Clips.css";
 
-function formatDate(iso) {
-  return new Date(iso).toLocaleString("es-AR", {
-    day: "2-digit",
-    month: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+function timeAgo(iso) {
+  const min = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
+  if (min < 1) return "recién";
+  if (min < 60) return `hace ${min} min`;
+  const h = Math.round(min / 60);
+  if (h < 24) return `hace ${h} h`;
+  const d = Math.round(h / 24);
+  if (d < 7) return `hace ${d} ${d === 1 ? "día" : "días"}`;
+  return new Date(iso).toLocaleDateString("es-AR", { day: "numeric", month: "short" });
+}
+
+function initial(name) {
+  return (name ?? "?").trim().charAt(0).toUpperCase();
+}
+
+// Botón de acción de un clip: ícono + texto corto. Muestra el error abajo si lo hay.
+function Action({ icon, label, onClick, disabled, to }) {
+  if (to) {
+    return (
+      <Link className="clip-action" to={to}>
+        {icon}
+        <span>{label}</span>
+      </Link>
+    );
+  }
+  return (
+    <button type="button" className="clip-action" onClick={onClick} disabled={disabled}>
+      {icon}
+      <span>{label}</span>
+    </button>
+  );
 }
 
 // El link de descarga lo firma el servidor recién al tocar el botón, después de revisar el plan.
-function DownloadButton({ clipId }) {
-  const [state, setState] = useState(null); // null | "loading" | mensaje de error
+function DownloadButton({ clipId, onError }) {
+  const [loading, setLoading] = useState(false);
 
   async function download() {
-    setState("loading");
+    setLoading(true);
+    onError(null);
     try {
       window.location.href = await getClipDownloadUrl(clipId);
-      setState(null);
     } catch (e) {
-      setState(e.status === 403 ? "Tu plan no permite descargar" : "No se pudo descargar");
+      onError(e.status === 403 ? "Tu plan no permite descargar" : "No se pudo descargar");
+    } finally {
+      setLoading(false);
     }
   }
 
-  return (
-    <>
-      <button type="button" className="clip-download" onClick={download} disabled={state === "loading"}>
-        {state === "loading" ? "Preparando…" : "⬇ Descargar"}
-      </button>
-      {state && state !== "loading" && <span className="clip-download-error">{state}</span>}
-    </>
-  );
+  return <Action icon={<DownloadIcon />} label={loading ? "Preparando…" : "Descargar"} onClick={download} disabled={loading} />;
 }
 
 // Publicar / despublicar (Fase 4, paso 3). La función del servidor decide si se
 // puede; can_publish / can_unpublish solo dicen qué botón mostrar.
-function PublishButton({ clip, onChange }) {
-  const [state, setState] = useState(null); // null | "loading" | mensaje de error
+function PublishButton({ clip, onChange, onError }) {
+  const [loading, setLoading] = useState(false);
   if (!clip.can_publish && !clip.can_unpublish) return null;
   const publish = !clip.is_public;
 
   async function toggle() {
-    setState("loading");
+    setLoading(true);
+    onError(null);
     try {
       onChange(await setClipPublic(clip.id, publish));
-      setState(null);
     } catch (e) {
-      setState(e.message);
+      onError(e.message);
+    } finally {
+      setLoading(false);
     }
   }
 
   return (
-    <>
-      <button type="button" className="clip-download clip-publish" onClick={toggle} disabled={state === "loading"}>
-        {state === "loading" ? "Guardando…" : publish ? "🌐 Publicar" : "🔒 Despublicar"}
-      </button>
-      {state && state !== "loading" && <span className="clip-download-error">{state}</span>}
-    </>
+    <Action
+      icon={<GlobeIcon />}
+      label={loading ? "Guardando…" : publish ? "Publicar" : "Despublicar"}
+      onClick={toggle}
+      disabled={loading}
+    />
   );
 }
 
@@ -87,11 +109,7 @@ function ShareButton({ clipId }) {
     }
   }
 
-  return (
-    <button type="button" className="clip-download" onClick={share}>
-      {copied ? "Link copiado" : "🔗 Compartir"}
-    </button>
-  );
+  return <Action icon={<ShareIcon />} label={copied ? "Copiado" : "Compartir"} onClick={share} />;
 }
 
 // Reportar un clip público (Fase 4, paso 5). Solo guarda el reporte; el admin
@@ -111,72 +129,133 @@ export function ReportButton({ clipId }) {
     }
   }
 
-  if (state && state !== "loading") return <span className="clip-meta">{state}</span>;
+  if (state && state !== "loading") return <span className="clip-action-note">{state}</span>;
+  return <Action icon={<FlagIcon />} label="Reportar" onClick={report} disabled={state === "loading"} />;
+}
+
+// Video que se reproduce solo (sin sonido) cuando está a la vista, como un feed.
+function AutoplayVideo({ clip }) {
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const video = ref.current;
+    if (!video || !("IntersectionObserver" in window)) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) video.play().catch(() => {});
+        else video.pause();
+      },
+      { threshold: 0.6 }
+    );
+    observer.observe(video);
+    return () => observer.disconnect();
+  }, []);
+
   return (
-    <button type="button" className="clip-download clip-report" onClick={report} disabled={state === "loading"}>
-      🚩 Reportar
-    </button>
+    <video
+      ref={ref}
+      className="clip-video"
+      src={clip.video_url}
+      poster={clip.thumbnail_url ?? undefined}
+      controls
+      muted
+      loop
+      playsInline
+      preload="none"
+    />
   );
 }
 
-// Grilla de clips guardados (la usan la pantalla Clips y el perfil del jugador).
+function ClipPost({ clip, canDownload, canReport, isMine, onChange }) {
+  const [actionError, setActionError] = useState(null);
+  const playable = clip.status === "ready" && clip.video_url && !clip.expired_at;
+  const place = clip.table && [clip.table.club?.name, clip.table.label].filter(Boolean).join(" · ");
+
+  return (
+    <li className="clip-post">
+      <div className="clip-head">
+        <div className="clip-avatars" aria-hidden="true">
+          {[clip.player1, clip.player2].map((p, i) =>
+            p?.avatar_url ? (
+              <img key={i} src={p.avatar_url} alt="" className="avatar clip-avatar" />
+            ) : (
+              <span key={i} className="avatar clip-avatar">{initial(p?.name)}</span>
+            )
+          )}
+        </div>
+        <div className="clip-head-text">
+          <span className="clip-players">
+            {clip.player1?.name ?? "Jugador 1"} <span className="muted">vs</span> {clip.player2?.name ?? "Jugador 2"}
+          </span>
+          <span className="clip-meta">{[place, timeAgo(clip.created_at)].filter(Boolean).join(" · ")}</span>
+        </div>
+        {clip.is_public && <span className="badge">Público</span>}
+      </div>
+
+      {clip.expired_at ? (
+        <div className="clip-placeholder">Este clip venció</div>
+      ) : playable ? (
+        <AutoplayVideo clip={clip} />
+      ) : (
+        <div className={`clip-placeholder${clip.status === "error" ? " clip-placeholder-error" : ""}`}>
+          {clip.status === "error" ? "No se pudo guardar" : "Procesando…"}
+        </div>
+      )}
+
+      <div className="clip-actions">
+        {clip.is_public && <ShareButton clipId={clip.id} />}
+        {playable &&
+          (canDownload ? (
+            <DownloadButton clipId={clip.id} onError={setActionError} />
+          ) : (
+            <Action icon={<DownloadIcon />} label="Descargar" to="/plan" />
+          ))}
+        <PublishButton clip={clip} onChange={onChange} onError={setActionError} />
+        {canReport && clip.is_public && !isMine && <ReportButton clipId={clip.id} />}
+      </div>
+
+      {(actionError || (clip.expires_at && !clip.expired_at) || clip.duration_sec) && (
+        <div className="clip-foot">
+          {actionError && <span className="error">{actionError}</span>}
+          {clip.duration_sec && <span>{clip.duration_sec}s</span>}
+          {clip.expires_at && !clip.expired_at && (
+            <span>Se borra el {new Date(clip.expires_at).toLocaleDateString("es-AR")}</span>
+          )}
+        </div>
+      )}
+    </li>
+  );
+}
+
+// Clips en una columna, del más nuevo al más viejo (el feed de Inicio, el
+// perfil del jugador y la página de un club).
 // canDownload: el plan del usuario logueado permite descargar (Fase 3).
-// canReport: muestra Reportar en los clips públicos (el feed, Fase 4 paso 5).
-export default function ClipList({ clips: initialClips, canDownload = false, canReport = false, emptyText = "Todavía no hay clips guardados." }) {
+// canReport: muestra Reportar en los clips públicos que no son tuyos (Fase 4 paso 5).
+// isMine(clip): si el clip es del usuario logueado.
+export default function ClipList({
+  clips: initialClips,
+  canDownload = false,
+  canReport = false,
+  isMine = () => false,
+  emptyText = "Todavía no hay clips guardados.",
+}) {
   // Cambios de publicar/despublicar hechos en esta pantalla, por id de clip
   const [changes, setChanges] = useState({});
   const clips = initialClips.map((c) => (changes[c.id] ? { ...c, ...changes[c.id] } : c));
 
-  if (clips.length === 0) return <p className="clips-empty">{emptyText}</p>;
+  if (clips.length === 0) return <p className="empty">{emptyText}</p>;
 
   return (
-    <ul className="clips-grid">
+    <ul className="clip-feed">
       {clips.map((c) => (
-        <li key={c.id} className="clip-card">
-          {c.expired_at ? (
-            <div className="clip-placeholder clip-expired">Vencido</div>
-          ) : c.status === "ready" && c.video_url ? (
-            <video
-              className="clip-video"
-              src={c.video_url}
-              poster={c.thumbnail_url ?? undefined}
-              controls
-              playsInline
-              preload="none"
-            />
-          ) : (
-            <div className={`clip-placeholder clip-${c.status}`}>
-              {c.status === "error" ? "No se pudo guardar" : "Procesando…"}
-            </div>
-          )}
-
-          <div className="clip-info">
-            <span className="clip-players">
-              {c.player1?.name ?? "Jugador 1"} vs {c.player2?.name ?? "Jugador 2"}
-              {c.is_public && <span className="clip-public-badge">Público</span>}
-            </span>
-            <span className="clip-meta">
-              {[c.table && `${c.table.club?.name} · ${c.table.label}`, formatDate(c.created_at), c.duration_sec && `${c.duration_sec}s`]
-                .filter(Boolean)
-                .join(" · ")}
-            </span>
-            {c.expires_at && !c.expired_at && (
-              <span className="clip-meta">Se borra el {new Date(c.expires_at).toLocaleDateString("es-AR")}</span>
-            )}
-            {c.status === "ready" && c.video_url && !c.expired_at && (
-              canDownload ? (
-                <DownloadButton clipId={c.id} />
-              ) : (
-                <Link className="clip-download clip-download-locked" to="/plan">
-                  🔒 Descargar con un plan pago
-                </Link>
-              )
-            )}
-            {c.is_public && <ShareButton clipId={c.id} />}
-            {canReport && c.is_public && <ReportButton clipId={c.id} />}
-            <PublishButton clip={c} onChange={(change) => setChanges((prev) => ({ ...prev, [c.id]: change }))} />
-          </div>
-        </li>
+        <ClipPost
+          key={c.id}
+          clip={c}
+          canDownload={canDownload}
+          canReport={canReport}
+          isMine={isMine(c)}
+          onChange={(change) => setChanges((prev) => ({ ...prev, [c.id]: change }))}
+        />
       ))}
     </ul>
   );

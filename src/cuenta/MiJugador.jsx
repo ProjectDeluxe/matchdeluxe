@@ -53,7 +53,7 @@ export default function MiJugador() {
             <button className="btn" disabled={busy} onClick={() => run(() => claimPlayer(candidate.id))}>
               Sí, soy yo
             </button>
-            <button className="btn" disabled={busy} onClick={() => setCandidates(candidates.slice(1))}>
+            <button className="btn btn-secondary" disabled={busy} onClick={() => setCandidates(candidates.slice(1))}>
               No, soy otra persona
             </button>
           </div>
