@@ -1,8 +1,8 @@
 # PoolAppDeluxe — Roadmap y arquitectura (v1)
 
-Documento vivo. Última actualización: 2026-10-17 (Fase 3 cerrada, paso 1 de la Fase 4 en producción y paso 2 en código), a partir de la revisión del código existente y la definición de producto con Agus.
+Documento vivo. Última actualización: 2026-10-17 (Fase 3 cerrada y pasos 1 y 2 de la Fase 4 en producción), a partir de la revisión del código existente y la definición de producto con Agus.
 
-> **Actualización 2026-10-17:** Fase 3 cerrada. Agus probó en la mesa la repetición sin recorte con OBS real, probó las cuentas (crear un club con una cuenta que no es admin, darle acceso a un staff, cargar un partido jugado, el límite del plan gratis y el reclamo por celu; del invitado por QR se probó la página, falta una partida entera) y confirmó Anonymous sign-ins en Supabase y las variables de Vercel del job de borrado. El cobro (proveedor y precios) no bloquea el piloto: mientras tanto los planes pagos se activan a mano. Lo que queda abierto de la Fase 3 está en 6.8 y el plan de la Fase 4 en 6.9.
+> **Actualización 2026-10-17:** Fase 3 cerrada. Agus probó en la mesa la repetición sin recorte con OBS real, probó las cuentas (crear un club con una cuenta que no es admin, darle acceso a un staff, cargar un partido jugado, el límite del plan gratis y el reclamo por celu; del invitado por QR se probó la página, falta una partida entera) y confirmó Anonymous sign-ins en Supabase. Las variables de Vercel del job de borrado se habían dado por confirmadas pero no estaban: se cargaron el 2026-10-17 al desplegar el paso 2 de la Fase 4 (6.3, 6.9). El cobro (proveedor y precios) no bloquea el piloto: mientras tanto los planes pagos se activan a mano. Lo que queda abierto de la Fase 3 está en 6.8 y el plan de la Fase 4 en 6.9.
 
 > **Actualización 2026-10-15:** pruebas en la PC de la mesa de la tele como proyector de OBS (6.5). La segunda (2026-10-11) arregló que la repetición no apareciera y pasó a un recorte sin reprocesar. La tercera (2026-10-12) mostró tiempos muy variables del disco (OBS 2–10 s en guardar, recorte hasta 25,7 s) y cortes de Supabase Realtime. Ahora el agente no recorta: carga el archivo de OBS y salta a los últimos segundos, borra los .mp4 que guarda OBS y recupera los pedidos que llegaron durante un corte de Realtime. Probado con OBS simulado; falta probarlo en la mesa.
 
@@ -243,7 +243,7 @@ Esto depende de cosas que todavía no existen (login/panel de club, Fase 1 del m
 - Elegir proveedor de pago. Stripe (lo que decía este documento) no abre cuentas a comercios de Argentina sin una empresa en el exterior; la alternativa natural es Mercado Pago (suscripciones con débito automático en pesos). Con eso: botón "Suscribirme" en Mi plan → checkout del proveedor → webhook (función en `api/`) que escribe `user_subscriptions`.
 - Poner precios a Plus y Pro (columna `price_ars` de `plans`). Este punto y el anterior pasan a 6.8: no bloquean el piloto.
 - ~~Correr `supabase/migrations/2026-10-07-fase3-planes.sql` en Supabase de producción~~ → hecho el 2026-10-08, junto con la de cuentas (6.4).
-- ~~En Vercel, agregar `SUPABASE_URL`, `SUPABASE_SERVICE_KEY` y `CRON_SECRET` (sin prefijo `VITE_`, así nunca llegan al navegador) para el job de borrado~~ → confirmado por Agus el 2026-10-17.
+- ~~En Vercel, agregar `SUPABASE_URL`, `SUPABASE_SERVICE_KEY` y `CRON_SECRET` (sin prefijo `VITE_`, así nunca llegan al navegador) para el job de borrado~~ → **corrección 2026-10-17:** se había dado por confirmado, pero en Vercel solo estaban `VITE_SUPABASE_URL` y `VITE_SUPABASE_KEY`; el job de borrado nunca pudo correr. Apareció al desplegar el paso 2 de la Fase 4 (6.9), que usa las mismas variables, y Agus las cargó ese día.
 - ~~Prueba real: usuario free guarda 1 clip de 20 s → el segundo pedido se rechaza con aviso → alta manual a Plus → puede guardar de 1 min y descargar~~ → probado por Agus el 2026-10-17 con números de prueba (6.8).
 
 ### 6.4 Fase 3 — modelo de cuentas: club, jugador e invitado (2026-10-08)
@@ -371,6 +371,7 @@ Esto depende de cosas que todavía no existen (login/panel de club, Fase 1 del m
 - Edición automática con IA del partido completo.
 - **Tele de la mesa abierta con QR (pedido de Agus, 2026-10-17):** al abrir una mesa, el agente pone en la tele el vivo de la mesa en grande con el QR de la mesa, para entrar con cuenta o como invitado, y al arrancar la partida pasa a la pantalla de partida de siempre. Va junto con el HUD de la partida (marcador y QR) integrado en la transmisión de OBS, que se habló en otra conversación y todavía no está en este documento.
 - **Rediseño visual de toda la app (pedido de Agus, 2026-10-17):** hoy se ve mal en el celu y en la PC. Por ejemplo, la pantalla de la mesa por QR (nueva partida) se sale del ancho del celu: se cortan el nombre, el selector de rival y el campo del celu. Hay que revisar el CSS completo, mobile primero.
+- `public/manifest.json` pide `/icon-192.png`, que no está en `public/` (el navegador avisa del error en la consola). Va con el rediseño.
 
 ### 6.8 Fase 3 — cierre (2026-10-17)
 
@@ -379,6 +380,7 @@ Fase 3 cerrada: planes y límites (6.3), modelo de cuentas (6.4), vivo y repetic
 - **CAPTCHA de Auth** antes de abrir mesas en un club real (6.4).
 - ~~Pruebas no confirmadas al cierre: el límite del plan free y el reclamo de un jugador por celu~~ → probadas el 2026-10-17. Para probar sin SMS (Twilio todavía no está configurado) se usan números de prueba de Supabase (Authentication → Sign In / Providers → Phone → Test Phone Numbers and OTPs), con código fijo: `541100000000` (Pro), `541100000001` (gratis, dueña de un club de prueba) y `541100000002` (reclamo). Borrarlos antes de abrir a un club real.
 - Falta jugar una partida entera como invitado por el QR de la mesa, desde una pestaña privada (la página del QR ya se probó con una cuenta). Ojo al probar: el QR de la mesa está en 🏢 Clubs → mesa → QR; el que aparece en la pantalla de la partida es otro (lleva al control de esa partida y pide login).
+- Confirmar la primera corrida del job de borrado (nunca había corrido por falta de variables, 6.3): Vercel → Logs, `/api/cron/expire-clips`, después de las 7 UTC.
 - `agent/replay-agent/README.md` todavía dice que el buffer de repetición va en 60 s; lo correcto es ~65 s (6.5).
 
 **Fase 4 — Publicar y compartir.** Feed o galería de clips públicos, compartir por link, descarga habilitada según plan.
@@ -407,7 +409,7 @@ Fase 3 cerrada: planes y límites (6.3), modelo de cuentas (6.4), vivo y repetic
 - **Pasado a producción el 2026-10-17:** primero se desplegó la app y después se corrió la migración (al revés, la app vieja deja de mostrar videos apenas el bucket es privado). En `storage.objects` quedaron solo `auth_read_clips`, `public_read_avatars` y `auth_upload_avatars`. Probado: clips y miniaturas en Clips y en el perfil, descarga con plan pago, el link público viejo ya no abre y la foto de perfil se sube logueado.
 - **Queda:** un link firmado vence a la hora; si alguien deja la pantalla abierta más de una hora, el video no carga hasta recargar la página. Si molesta, se puede volver a firmar al dar play. La descarga sigue dependiendo solo de esconder el botón: cualquiera logueado puede firmar un link; eso lo resuelve el paso 2. Más adelante, si se quiere, el agente puede dejar de guardar URLs públicas y guardar la ruta de la miniatura.
 
-**Paso 2 — hecho en código (2026-10-17), falta pasar a producción:**
+**Paso 2 — hecho y en producción (2026-10-17, `b21275a` y `71a708e`):**
 - **Por qué:** con `auth_read_clips` (paso 1) cualquier usuario logueado, invitados incluidos, podía firmar desde el navegador un link de cualquier clip, también el de descarga. Esconder el botón según el plan no alcanzaba, y además cualquiera veía los clips de todos.
 - Migración `supabase/migrations/2026-10-17-fase4-firma-servidor.sql` (idempotente, también en `supabase-schema.sql` v1.7): saca `auth_read_clips`. El bucket `clips` queda sin políticas para la app.
 - Función `api/clips/sign.js` (Vercel, con `SUPABASE_URL` y `SUPABASE_SERVICE_KEY`, las mismas del job de borrado): valida la sesión con el token del usuario y firma los links con la service key. **Quién ve un clip:** los dos jugadores de la partida (el jugador con `user_id` del usuario), quien lo guardó (`owner_id`), la gente del club de la mesa (`club_members`) y el admin. Links para ver: 1 hora. Link de descarga: 5 minutos, solo para una cuenta real (no invitado) con `plan_for_user(uid).can_download`; si no, 403.
@@ -415,6 +417,9 @@ Fase 3 cerrada: planes y límites (6.3), modelo de cuentas (6.4), vivo y repetic
 - **Ojo:** `npm run dev` (Vite) no sirve las funciones de `api/`; para probar en local hace falta `vercel dev`, o probar en producción.
 - **Para pasar a producción:** push, esperar que el deploy de Vercel diga Ready y después correr la migración en el SQL Editor (al revés, la app vieja deja de mostrar videos).
 - **Pruebas:** ver clips y miniaturas con un plan gratis y con uno pago (en Clips y en el perfil); descargar con plan pago; con plan gratis, la descarga da 403 aunque se llame a la función a mano; un invitado o un usuario ajeno a la partida y al club no ve el clip; desde el navegador ya no se puede firmar un link (`createSignedUrl` falla).
+- **Pasado a producción el 2026-10-17:** deploy y después la migración, corrida por Agus en el SQL Editor (`auth_read_clips` ya no está).
+- **Probado por Agus (2026-10-17):** con Pro se ven los clips y se descargan; la cuenta gratis ve solo sus clips y al descargar le aparece el aviso del plan; un invitado no ve clips ajenos.
+- **Encontrado al desplegar (2026-10-17):** la función devolvía 500 sin detalle (`FUNCTION_INVOCATION_FAILED`). En Vercel faltaban `SUPABASE_URL`, `SUPABASE_SERVICE_KEY` y `CRON_SECRET` (nunca se habían cargado, ver 6.3). `71a708e` hace que la función avise qué variable falta y devuelva el mensaje de cualquier error, que la app muestra en la pantalla Clips. Agus cargó las tres y redesplegó. Además, una pestaña abierta desde antes del deploy sigue con la app vieja (es una SPA): después de un deploy hay que recargar.
 - **Queda:** la app trae todas las filas de `clips` y la función filtra cuáles se ven. Con muchos clips conviene filtrar en la base, ajustando la RLS de la tabla `clips` con la misma regla (Fase 5). Los links para ver siguen venciendo a la hora sin volver a pedirse al dar play.
 
 **Costo a vigilar:** la transferencia, no el storage. Con Supabase Pro, 250 GB son ~96.000 reproducciones de un clip de 1 minuto por mes (6.3).
@@ -423,7 +428,7 @@ Fase 3 cerrada: planes y límites (6.3), modelo de cuentas (6.4), vivo y repetic
 
 ## 7. Próximo paso concreto
 
-**Actualizado 2026-10-17:** Fases 1, 2 y 3 cerradas (lo que queda abierto de la 3, incluido el cobro, en 6.8). Siguiente: Fase 4, arrancando por el paso 1 de 6.9 (bucket privado y links firmados), que ya está en producción y probado. El paso 2 (links firmados por el servidor y descarga según plan) está en código: falta desplegarlo, correr su migración y probarlo (6.9). Después, el paso 3 (publicar y despublicar).
+**Actualizado 2026-10-17:** Fases 1, 2 y 3 cerradas (lo que queda abierto de la 3, incluido el cobro, en 6.8). Siguiente: Fase 4, arrancando por el paso 1 de 6.9 (bucket privado y links firmados), que ya está en producción y probado. El paso 2 (links firmados por el servidor y descarga según plan) también está en producción y funciona (6.9). Sigue el paso 3 (publicar y despublicar).
 
 ## 8. Expansión a otros deportes (tenis y lo que siga)
 
