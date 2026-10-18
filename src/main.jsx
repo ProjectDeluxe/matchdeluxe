@@ -11,6 +11,7 @@ import Partidas from "./partidas/Partidas.jsx";
 import NuevaPartida from "./partidas/NuevaPartida.jsx";
 import Partida from "./partidas/Partida.jsx";
 import PartidaControl from "./partidas/PartidaControl.jsx";
+import EscanearQR from "./partidas/EscanearQR.jsx";
 import Buscar from "./buscar/Buscar.jsx";
 import NuevoJugador from "./jugadores/NuevoJugador.jsx";
 import PerfilJugador from "./jugadores/PerfilJugador.jsx";
@@ -41,6 +42,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(
               {/* Protegidas. Inicio = feed de clips (rediseño 2026-10) */}
               <Route path="/" element={<ProtectedRoute><Feed /></ProtectedRoute>} />
               <Route path="/partida" element={<ProtectedRoute><Partidas /></ProtectedRoute>} />
+              <Route path="/partida/escanear" element={<EscanearQR />} />
               <Route path="/partida/nueva" element={<ProtectedRoute><NuevaPartida /></ProtectedRoute>} />
               <Route path="/partida/:id" element={<ProtectedRoute><Partida /></ProtectedRoute>} />
               <Route path="/partida/:id/control" element={<ProtectedRoute><PartidaControl /></ProtectedRoute>} />

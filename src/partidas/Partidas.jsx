@@ -22,8 +22,11 @@ export default function Partidas() {
       <h1>Partida</h1>
 
       <div className="card card-soft">
-        <p className="muted">¿Estás en un club? Escaneá el QR de la mesa con la cámara del celu y arrancás ahí mismo.</p>
-        <Link className="btn btn-block" to="/partida/nueva">Nueva partida</Link>
+        <p className="muted">¿Estás en un club? Escaneá el QR de la mesa y arrancás ahí mismo.</p>
+        <div className="partidas-actions">
+          <Link className="btn" to="/partida/nueva">Nueva partida</Link>
+          <Link className="btn btn-secondary" to="/partida/escanear">Escanear QR</Link>
+        </div>
       </div>
 
       {loading ? (

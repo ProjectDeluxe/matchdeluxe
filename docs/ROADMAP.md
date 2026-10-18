@@ -371,12 +371,16 @@ Esto depende de cosas que todavía no existen (login/panel de club, Fase 1 del m
 - Edición automática con IA del partido completo.
 - **Tele de la mesa abierta con QR (pedido de Agus, 2026-10-17):** al abrir una mesa, el agente pone en la tele el vivo de la mesa en grande con el QR de la mesa, para entrar con cuenta o como invitado, y al arrancar la partida pasa a la pantalla de partida de siempre. Va junto con el HUD de la partida (marcador y QR) integrado en la transmisión de OBS, que se habló en otra conversación y todavía no está en este documento.
 - **Rediseño visual de toda la app (pedido de Agus, 2026-10-17) — hecho, ver 6.10:** hoy se ve mal en el celu y en la PC. Por ejemplo, la pantalla de la mesa por QR (nueva partida) se sale del ancho del celu: se cortan el nombre, el selector de rival y el campo del celu. Hay que revisar el CSS completo, mobile primero. Va apenas se cierre la Fase 4 (Agus, 2026-10-18).
-- `public/manifest.json` pide `/icon-192.png`, que no está en `public/` (el navegador avisa del error en la consola). Va con el rediseño.
+- `public/manifest.json` pide `/icon-192.png`, que no está en `public/` (el navegador avisa del error en la consola). Va con el rediseño. **Hecho (2026-10-18):** se agregaron `icon-192.png` e `icon-512.png` (cuadrado azul con una P blanca), junto con "Escanear QR"; pendiente de probar.
 - **El QR del control abre el navegador y no la app instalada (Agus, 2026-10-18):** Agus tiene la app instalada en la pantalla de inicio, en pantalla completa. Si escanea el QR del control con la cámara del celu, se abre una pestaña del navegador en vez de la app y le pide loguearse de nuevo, así que no parece una app nativa. Por qué pasa: la cámara siempre abre los links en el navegador. En iPhone, además, la app instalada no comparte la sesión con Safari, y eso no tiene arreglo en una web. En Android, Chrome a veces puede abrir la app instalada si el link está dentro de su `scope`. Opciones, de menor a mayor esfuerzo:
   1. Un botón "Escanear QR" dentro de la app, que usa la cámara con `BarcodeDetector` o una librería tipo jsQR. Así no se sale nunca de la app ni se pierde la sesión. Es lo más barato, y anda en iPhone y en Android.
   2. En Android, agregar `id`, `scope` y `launch_handler` al `manifest.json` para que los links de la app abran la app instalada. No sirve para iPhone.
   3. Una app nativa real (por ejemplo con Capacitor) que tome los links de la app con Universal Links / App Links. Lo resuelve del todo, pero agrega tiendas, revisiones y builds. Se evalúa más adelante.
   Recomendación: la opción 1 (más la 2, que es casi gratis) cuando se cierre el rediseño.
+  - **En parte hecho (2026-10-18), pendiente de probar:** opciones 1 y 2.
+    - Botón "Escanear QR" en Partida, que abre la ruta `/partida/escanear`. Usa el lector nativo `BarcodeDetector` en Android y, si no está (iPhone), la librería `jsqr`. Acepta el QR de la mesa (`/mesa/:token`) y el QR de control de la PC (`/partida/:id/control`), con cualquier dominio. Con otro QR dice que no es de una mesa ni de una partida.
+    - `manifest.json` con `id` y `scope`, fondo blanco y los íconos de 192 y 512 (`purpose: any maskable`), para que Android la instale como app de verdad. Más `apple-touch-icon` en `index.html`.
+    - En iPhone la cámara del celu va a seguir abriendo Safari; ahí la solución es escanear desde adentro de la app. La app nativa (Capacitor, opción 3) queda para más adelante.
 
 ### 6.8 Fase 3 — cierre (2026-10-17)
 
@@ -475,11 +479,16 @@ Fase 3 cerrada: planes y límites (6.3), modelo de cuentas (6.4), vivo y repetic
   - **Perfil:** perfil propio con estadísticas, partidas, clips y Opciones (club, suscripción, cerrar sesión).
 - El QR de la mesa sigue llevando directo al control.
 - No toca la base de datos.
-- **Pendiente:** probarlo entero en producción, y lo del QR que abre el navegador (6.7).
+- **Pasado a producción el 2026-10-18** (commit `8a29943`, sin migración). **Primera prueba de Agus en producción (2026-10-18):** "anda re bien al parecer". Después probó en producción, y funcionan (Agus, 2026-10-18, "Funcionan las 3"):
+  1. Entrar por el QR de una mesa: el control suma puntos y guarda el clip.
+  2. Abrir un club desde Buscar.
+  3. Cerrar sesión desde Perfil y volver a entrar.
+- **Pendiente:** lo del QR que abre el navegador en vez de la app instalada (6.7).
+- **Escanear QR dentro de la app (2026-10-18), pendiente de probar:** botón "Escanear QR" en Partida (`/partida/escanear`), y manifest con `id`, `scope` e íconos para que Android la instale como app. Detalle en 6.7.
 
 ## 7. Próximo paso concreto
 
-**Actualizado 2026-10-18:** Fases 1, 2 y 3 cerradas (lo que queda abierto de la 3, incluido el cobro, en 6.8). Siguiente: Fase 4, arrancando por el paso 1 de 6.9 (bucket privado y links firmados), que ya está en producción y probado. El paso 2 (links firmados por el servidor y descarga según plan) también está en producción y funciona. El paso 3 (publicar y despublicar) también está en producción y probado. El paso 4 (página de clip compartible, `/c/:id`, con vista previa para WhatsApp) también está en producción y probado (6.9). El paso 5 (feed de clips públicos y Reportar) también está en producción y probado (6.9). **Fase 4 cerrada (2026-10-18).** Rediseño visual hecho (6.10), falta probarlo entero en producción; después, la Fase 5.
+**Actualizado 2026-10-18:** Fases 1, 2 y 3 cerradas (lo que queda abierto de la 3, incluido el cobro, en 6.8). Siguiente: Fase 4, arrancando por el paso 1 de 6.9 (bucket privado y links firmados), que ya está en producción y probado. El paso 2 (links firmados por el servidor y descarga según plan) también está en producción y funciona. El paso 3 (publicar y despublicar) también está en producción y probado. El paso 4 (página de clip compartible, `/c/:id`, con vista previa para WhatsApp) también está en producción y probado (6.9). El paso 5 (feed de clips públicos y Reportar) también está en producción y probado (6.9). **Fase 4 cerrada (2026-10-18).** Rediseño visual hecho, en producción y probado (6.10). Sigue "Escanear QR" dentro de la app y los íconos para instalarla (6.7), pendiente de probar. Después, la Fase 5.
 
 ## 8. Expansión a otros deportes (tenis y lo que siga)
 
