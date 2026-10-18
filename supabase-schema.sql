@@ -1,5 +1,5 @@
 -- ============================================================
--- POOL APP DELUXE — Schema completo v1.8 (incluye Fase 1: clubs/mesas, Fase 2: clips, Fase 3: planes, cuentas y clubs autogestionados y Fase 4: bucket de clips privado con links firmados por el servidor y publicar clips)
+-- POOL APP DELUXE — Schema completo v1.9 (incluye Fase 1: clubs/mesas, Fase 2: clips, Fase 3: planes, cuentas y clubs autogestionados y Fase 4: bucket de clips privado con links firmados por el servidor, publicar clips y reportes)
 -- Pegar en Supabase → SQL Editor → Run
 -- ============================================================
 
@@ -1188,3 +1188,25 @@ CREATE POLICY "matches_delete" ON matches FOR DELETE USING (
 GRANT EXECUTE ON FUNCTION is_club_owner(UUID), create_my_club(TEXT, TEXT, TEXT),
   add_club_member_by_phone(UUID, TEXT, TEXT),
   log_match_result(UUID, UUID, UUID, INT, INT, UUID, TIMESTAMPTZ) TO authenticated;
+
+-- ============================================================
+-- FASE 4, paso 5: reportes de clips públicos (= migración
+-- 2026-10-18-fase4-feed.sql). La app no la lee ni la escribe:
+-- escribe api/clips/report.js con la service key.
+-- ============================================================
+CREATE TABLE IF NOT EXISTS clip_reports (
+  id           UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  clip_id      UUID NOT NULL REFERENCES clips(id) ON DELETE CASCADE,
+  reporter_id  UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  reason       TEXT CHECK (reason IS NULL OR char_length(reason) <= 300),
+  created_at   TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE (clip_id, reporter_id)
+);
+CREATE INDEX IF NOT EXISTS idx_clip_reports_clip_id ON clip_reports(clip_id);
+
+-- Sin políticas: la app no lee ni escribe reportes. Escribe api/clips/report.js
+-- con la service key; el admin los revisa desde el SQL Editor.
+ALTER TABLE clip_reports ENABLE ROW LEVEL SECURITY;
+
+-- Para el feed: los públicos, del más nuevo al más viejo
+CREATE INDEX IF NOT EXISTS idx_clips_published_at ON clips(published_at DESC) WHERE is_public;

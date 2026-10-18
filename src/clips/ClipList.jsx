@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { getClipDownloadUrl, setClipPublic } from "../services/ClipService";
+import { getClipDownloadUrl, reportClip, setClipPublic } from "../services/ClipService";
 import "./Clips.css";
 
 function formatDate(iso) {
@@ -94,9 +94,35 @@ function ShareButton({ clipId }) {
   );
 }
 
+// Reportar un clip público (Fase 4, paso 5). Solo guarda el reporte; el admin
+// lo revisa a mano (la moderación queda para la Fase 5).
+export function ReportButton({ clipId }) {
+  const [state, setState] = useState(null); // null | "loading" | texto a mostrar
+
+  async function report() {
+    const reason = window.prompt("¿Por qué lo reportás? (opcional)");
+    if (reason === null) return; // canceló
+    setState("loading");
+    try {
+      const result = await reportClip(clipId, reason);
+      setState(result.already ? "Ya lo reportaste" : "Reportado, gracias");
+    } catch (e) {
+      setState(e.message);
+    }
+  }
+
+  if (state && state !== "loading") return <span className="clip-meta">{state}</span>;
+  return (
+    <button type="button" className="clip-download clip-report" onClick={report} disabled={state === "loading"}>
+      🚩 Reportar
+    </button>
+  );
+}
+
 // Grilla de clips guardados (la usan la pantalla Clips y el perfil del jugador).
 // canDownload: el plan del usuario logueado permite descargar (Fase 3).
-export default function ClipList({ clips: initialClips, canDownload = false, emptyText = "Todavía no hay clips guardados." }) {
+// canReport: muestra Reportar en los clips públicos (el feed, Fase 4 paso 5).
+export default function ClipList({ clips: initialClips, canDownload = false, canReport = false, emptyText = "Todavía no hay clips guardados." }) {
   // Cambios de publicar/despublicar hechos en esta pantalla, por id de clip
   const [changes, setChanges] = useState({});
   const clips = initialClips.map((c) => (changes[c.id] ? { ...c, ...changes[c.id] } : c));
@@ -147,6 +173,7 @@ export default function ClipList({ clips: initialClips, canDownload = false, emp
               )
             )}
             {c.is_public && <ShareButton clipId={c.id} />}
+            {canReport && c.is_public && <ReportButton clipId={c.id} />}
             <PublishButton clip={c} onChange={(change) => setChanges((prev) => ({ ...prev, [c.id]: change }))} />
           </div>
         </li>

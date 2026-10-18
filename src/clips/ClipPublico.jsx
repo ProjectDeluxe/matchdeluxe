@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+import { ReportButton } from "./ClipList.jsx";
 import "./Clips.css";
 
 // Página pública de un clip (/c/:id), la que se abre desde un link compartido
@@ -7,6 +9,7 @@ import "./Clips.css";
 // api/clips/public.js solo si el clip es público, está listo y no venció.
 export default function ClipPublico() {
   const { id } = useParams();
+  const { user } = useAuth();
   const [clip, setClip] = useState(undefined); // undefined = cargando, null = no disponible
 
   useEffect(() => {
@@ -46,6 +49,8 @@ export default function ClipPublico() {
                 .filter(Boolean)
                 .join(" · ")}
             </span>
+            {/* Reportar pide cuenta real (Fase 4, paso 5) */}
+            {user && !user.is_anonymous && <ReportButton clipId={id} />}
           </div>
         </div>
       )}

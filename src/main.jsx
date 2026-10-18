@@ -17,6 +17,7 @@ import Clubs from "./clubs/Clubs.jsx";
 import Plan from "./plan/Plan.jsx";
 import MesaAbierta from "./mesa/MesaAbierta.jsx";
 import ClipPublico from "./clips/ClipPublico.jsx";
+import Feed from "./clips/Feed.jsx";
 
 import { PlayerProvider } from "./context/PlayerContext";
 import { MatchProvider } from "./context/MatchContext";
@@ -46,6 +47,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(
               <Route path="/jugadores/:id" element={<ProtectedRoute><PerfilJugador /></ProtectedRoute>} />
               <Route path="/historial" element={<ProtectedRoute><Historial /></ProtectedRoute>} />
               <Route path="/clips" element={<ProtectedRoute><Clips /></ProtectedRoute>} />
+              <Route path="/feed" element={<ProtectedRoute><Feed /></ProtectedRoute>} />
               <Route path="/clubs" element={<ProtectedRoute><Clubs /></ProtectedRoute>} />
               <Route path="/plan" element={<ProtectedRoute><Plan /></ProtectedRoute>} />
 

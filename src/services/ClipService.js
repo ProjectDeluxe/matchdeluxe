@@ -58,6 +58,16 @@ export function setClipPublic(clipId, publish) {
   return callApi("/api/clips/publish", { clipId, publish });
 }
 
+// Feed de clips públicos (Fase 4, paso 5), de a 20. Devuelve { clips, next_cursor, clubs }.
+export function getFeed({ cursor = null, clubId = null } = {}) {
+  return callApi("/api/clips/feed", { cursor, clubId });
+}
+
+// Reportar un clip (Fase 4, paso 5). Devuelve { reported } o { already }.
+export function reportClip(clipId, reason) {
+  return callApi("/api/clips/report", { clipId, reason });
+}
+
 // Todos los clips, del más nuevo al más viejo (pantalla Clips & Replays)
 export async function getClips() {
   const { data, error } = await supabase

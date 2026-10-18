@@ -20,6 +20,7 @@ export default function Header() {
 
       <nav className="nav">
         <Link to="/clips" className="icon-btn" title="Clips">🎬</Link>
+        <Link to="/feed" className="icon-btn" title="Feed de clips públicos">📺</Link>
         <Link to="/partida/nueva" className="icon-btn" title="Nueva partida">🎱</Link>
         <Link to="/historial" className="icon-btn" title="Historial">📊</Link>
         <Link to="/jugadores" className="icon-btn" title="Jugadores">👤</Link>

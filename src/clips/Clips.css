@@ -120,3 +120,12 @@ button.clip-download:disabled {
 .clip-public-app {
   align-self: center;
 }
+
+.feed-filter {
+  margin-bottom: 16px;
+}
+
+.feed-more {
+  display: block;
+  margin: 16px auto 0;
+}
