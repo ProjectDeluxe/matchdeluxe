@@ -1,6 +1,6 @@
 # PoolAppDeluxe — Roadmap y arquitectura (v1)
 
-Documento vivo. Última actualización: 2026-10-17 (Fase 3 cerrada y pasos 1 y 2 de la Fase 4 en producción), a partir de la revisión del código existente y la definición de producto con Agus.
+Documento vivo. Última actualización: 2026-10-17 (Fase 3 cerrada, pasos 1 y 2 de la Fase 4 en producción y paso 3 en código), a partir de la revisión del código existente y la definición de producto con Agus.
 
 > **Actualización 2026-10-17:** Fase 3 cerrada. Agus probó en la mesa la repetición sin recorte con OBS real, probó las cuentas (crear un club con una cuenta que no es admin, darle acceso a un staff, cargar un partido jugado, el límite del plan gratis y el reclamo por celu; del invitado por QR se probó la página, falta una partida entera) y confirmó Anonymous sign-ins en Supabase. Las variables de Vercel del job de borrado se habían dado por confirmadas pero no estaban: se cargaron el 2026-10-17 al desplegar el paso 2 de la Fase 4 (6.3, 6.9). El cobro (proveedor y precios) no bloquea el piloto: mientras tanto los planes pagos se activan a mano. Lo que queda abierto de la Fase 3 está en 6.8 y el plan de la Fase 4 en 6.9.
 
@@ -422,13 +422,24 @@ Fase 3 cerrada: planes y límites (6.3), modelo de cuentas (6.4), vivo y repetic
 - **Encontrado al desplegar (2026-10-17):** la función devolvía 500 sin detalle (`FUNCTION_INVOCATION_FAILED`). En Vercel faltaban `SUPABASE_URL`, `SUPABASE_SERVICE_KEY` y `CRON_SECRET` (nunca se habían cargado, ver 6.3). `71a708e` hace que la función avise qué variable falta y devuelva el mensaje de cualquier error, que la app muestra en la pantalla Clips. Agus cargó las tres y redesplegó. Además, una pestaña abierta desde antes del deploy sigue con la app vieja (es una SPA): después de un deploy hay que recargar.
 - **Queda:** la app trae todas las filas de `clips` y la función filtra cuáles se ven. Con muchos clips conviene filtrar en la base, ajustando la RLS de la tabla `clips` con la misma regla (Fase 5). Los links para ver siguen venciendo a la hora sin volver a pedirse al dar play.
 
+**Paso 3 — hecho en código (2026-10-17), falta pasar a producción:**
+- **Quién publica:** quien guardó el clip (`owner_id`), con cuenta real (no invitado) y un plan con `can_publish` (Plus o Pro); el clip tiene que estar listo y sin vencer. No hace falta el OK del rival (decidido con Agus). Es lo que decía el plan de arriba ("su dueño"); un jugador que no guardó el clip no lo puede publicar.
+- **Quién despublica:** quien lo guardó, cualquiera de los dos jugadores con cuenta, la gente del club de la mesa y el admin, sin importar el plan. Si lo despublica alguien que no es el dueño, queda trabado (`clips.publish_blocked_by`): el dueño ya no lo puede volver a publicar, así el rival no tiene que despublicarlo una y otra vez. Para destrabarlo, hoy, a mano desde el SQL Editor.
+- Migración `supabase/migrations/2026-10-17-fase4-publicar.sql` (idempotente, también en `supabase-schema.sql` v1.8): suma `clips.published_at` y `clips.publish_blocked_by`, y un índice parcial sobre `is_public` para el feed. Solo agrega columnas.
+- Función `api/clips/publish.js`: publica o despublica con la service key. La app sigue sin poder escribir `clips` (solo tiene la política de lectura, Fase 3). Como con la service key `auth.uid()` es NULL, el trigger `enforce_clip_publish` no corre por este camino: la función revisa el plan por su cuenta.
+- La lógica compartida de `sign.js` y `publish.js` (sesión, quién ve qué, rutas del bucket, errores como JSON) pasó a `api/_lib/clips.js`; Vercel no publica como función nada de una carpeta que empieza con `_`.
+- `sign.js`: un clip público lo ve cualquiera con sesión, invitados incluidos, y además devuelve `can_publish` / `can_unpublish` para que la app sepa qué botón mostrar. Ojo: con un plan con descarga se puede bajar cualquier clip público.
+- App: en cada clip, etiqueta "Público" y botón 🌐 Publicar / 🔒 Despublicar cuando corresponde, con el motivo si la función lo rechaza (por ejemplo "Tu plan no permite publicar"). Todavía no hay feed ni link para compartir (pasos 4 y 5): por ahora un clip público solo se ve en la pantalla Clips de cualquiera con sesión.
+- **Para pasar a producción:** correr la migración ANTES del push (solo agrega columnas, la app actual no se entera), después push y esperar que Vercel diga Ready. Al revés no: `sign.js` lee `publish_blocked_by` y, sin la columna, la pantalla Clips da error.
+- **Pruebas:** con Pro, publicar un clip que guardaste (aparece "Público"); con la cuenta gratis, guardar uno y ver que no aparece Publicar (y que la función da 403 si se la llama a mano); entrar como el rival o como staff del club y despublicarlo; volver con el dueño y ver que ya no puede publicarlo ("Uno de los jugadores lo despublicó"); el dueño despublica el suyo y lo puede volver a publicar; una cuenta ajena ve el clip público pero sin botón.
+
 **Costo a vigilar:** la transferencia, no el storage. Con Supabase Pro, 250 GB son ~96.000 reproducciones de un clip de 1 minuto por mes (6.3).
 
 **Fase 5 — Endurecer para producción real.** Ajustar las políticas RLS (hoy abiertas a "cualquier autenticado"), moderación de contenido público, monitoreo de mini-PCs (saber si una cámara se cayó), limpieza del código muerto y validaciones pendientes del punto 3.
 
 ## 7. Próximo paso concreto
 
-**Actualizado 2026-10-17:** Fases 1, 2 y 3 cerradas (lo que queda abierto de la 3, incluido el cobro, en 6.8). Siguiente: Fase 4, arrancando por el paso 1 de 6.9 (bucket privado y links firmados), que ya está en producción y probado. El paso 2 (links firmados por el servidor y descarga según plan) también está en producción y funciona (6.9). Sigue el paso 3 (publicar y despublicar).
+**Actualizado 2026-10-17:** Fases 1, 2 y 3 cerradas (lo que queda abierto de la 3, incluido el cobro, en 6.8). Siguiente: Fase 4, arrancando por el paso 1 de 6.9 (bucket privado y links firmados), que ya está en producción y probado. El paso 2 (links firmados por el servidor y descarga según plan) también está en producción y funciona. El paso 3 (publicar y despublicar) está en código: falta correr su migración, desplegarlo y probarlo (6.9). Después, el paso 4 (página de clip compartible).
 
 ## 8. Expansión a otros deportes (tenis y lo que siga)
 

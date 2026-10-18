@@ -1,5 +1,5 @@
 -- ============================================================
--- POOL APP DELUXE — Schema completo v1.7 (incluye Fase 1: clubs/mesas, Fase 2: clips, Fase 3: planes, cuentas y clubs autogestionados y Fase 4: bucket de clips privado con links firmados por el servidor)
+-- POOL APP DELUXE — Schema completo v1.8 (incluye Fase 1: clubs/mesas, Fase 2: clips, Fase 3: planes, cuentas y clubs autogestionados y Fase 4: bucket de clips privado con links firmados por el servidor y publicar clips)
 -- Pegar en Supabase → SQL Editor → Run
 -- ============================================================
 
@@ -95,7 +95,9 @@ CREATE TABLE IF NOT EXISTS clips (
   expires_at     TIMESTAMPTZ,          -- para el plan free (Fase 3)
   downloaded_at  TIMESTAMPTZ,
   owner_id       UUID,                 -- usuario que lo guardó (Fase 3: límites del plan)
-  expired_at     TIMESTAMPTZ           -- cuándo el job de borrado lo sacó del storage
+  expired_at     TIMESTAMPTZ,          -- cuándo el job de borrado lo sacó del storage
+  published_at   TIMESTAMPTZ,          -- cuándo se publicó (Fase 4, paso 3)
+  publish_blocked_by UUID REFERENCES auth.users(id) ON DELETE SET NULL  -- lo despublicó alguien que no es el dueño
 );
 
 -- ============================================================
@@ -275,6 +277,7 @@ CREATE TABLE IF NOT EXISTS club_subscriptions (
 CREATE INDEX IF NOT EXISTS idx_commands_requested_by ON realtime_commands(requested_by);
 CREATE INDEX IF NOT EXISTS idx_clips_owner_id        ON clips(owner_id);
 CREATE INDEX IF NOT EXISTS idx_clips_expires_at      ON clips(expires_at);
+CREATE INDEX IF NOT EXISTS idx_clips_is_public       ON clips(is_public) WHERE is_public;  -- Fase 4, paso 3
 
 -- ============================================================
 -- FUNCIONES
@@ -409,8 +412,9 @@ CREATE TRIGGER trg_set_clip_owner_and_expiry
 
 -- ============================================================
 -- TRIGGER: publicar un clip (is_public) solo si el plan del dueño
--- lo permite. Publicar en sí llega en la Fase 4; esto ya deja la
--- regla puesta en la base.
+-- lo permite. Desde la Fase 4 (paso 3) publica api/clips/publish.js con
+-- la service key (auth.uid() es NULL y este trigger no corre): la función
+-- revisa el plan por su cuenta. La regla queda para cualquier otro camino.
 -- ============================================================
 CREATE OR REPLACE FUNCTION enforce_clip_publish()
 RETURNS TRIGGER

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { getClipDownloadUrl } from "../services/ClipService";
+import { getClipDownloadUrl, setClipPublic } from "../services/ClipService";
 import "./Clips.css";
 
 function formatDate(iso) {
@@ -36,9 +36,40 @@ function DownloadButton({ clipId }) {
   );
 }
 
+// Publicar / despublicar (Fase 4, paso 3). La función del servidor decide si se
+// puede; can_publish / can_unpublish solo dicen qué botón mostrar.
+function PublishButton({ clip, onChange }) {
+  const [state, setState] = useState(null); // null | "loading" | mensaje de error
+  if (!clip.can_publish && !clip.can_unpublish) return null;
+  const publish = !clip.is_public;
+
+  async function toggle() {
+    setState("loading");
+    try {
+      onChange(await setClipPublic(clip.id, publish));
+      setState(null);
+    } catch (e) {
+      setState(e.message);
+    }
+  }
+
+  return (
+    <>
+      <button type="button" className="clip-download clip-publish" onClick={toggle} disabled={state === "loading"}>
+        {state === "loading" ? "Guardando…" : publish ? "🌐 Publicar" : "🔒 Despublicar"}
+      </button>
+      {state && state !== "loading" && <span className="clip-download-error">{state}</span>}
+    </>
+  );
+}
+
 // Grilla de clips guardados (la usan la pantalla Clips y el perfil del jugador).
 // canDownload: el plan del usuario logueado permite descargar (Fase 3).
-export default function ClipList({ clips, canDownload = false, emptyText = "Todavía no hay clips guardados." }) {
+export default function ClipList({ clips: initialClips, canDownload = false, emptyText = "Todavía no hay clips guardados." }) {
+  // Cambios de publicar/despublicar hechos en esta pantalla, por id de clip
+  const [changes, setChanges] = useState({});
+  const clips = initialClips.map((c) => (changes[c.id] ? { ...c, ...changes[c.id] } : c));
+
   if (clips.length === 0) return <p className="clips-empty">{emptyText}</p>;
 
   return (
@@ -65,6 +96,7 @@ export default function ClipList({ clips, canDownload = false, emptyText = "Toda
           <div className="clip-info">
             <span className="clip-players">
               {c.player1?.name ?? "Jugador 1"} vs {c.player2?.name ?? "Jugador 2"}
+              {c.is_public && <span className="clip-public-badge">Público</span>}
             </span>
             <span className="clip-meta">
               {[c.table && `${c.table.club?.name} · ${c.table.label}`, formatDate(c.created_at), c.duration_sec && `${c.duration_sec}s`]
@@ -83,6 +115,7 @@ export default function ClipList({ clips, canDownload = false, emptyText = "Toda
                 </Link>
               )
             )}
+            <PublishButton clip={c} onChange={(change) => setChanges((prev) => ({ ...prev, [c.id]: change }))} />
           </div>
         </li>
       ))}

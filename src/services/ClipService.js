@@ -12,9 +12,9 @@ const CLIP_SELECT = `
 // Los links para ver vencen en 1 hora; el de descarga, en 5 minutos.
 const SIGN_BATCH = 200;
 
-async function callSign(payload) {
+async function callApi(path, payload) {
   const { data: { session } } = await supabase.auth.getSession();
-  const res = await fetch("/api/clips/sign", {
+  const res = await fetch(path, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -32,24 +32,30 @@ async function callSign(payload) {
 }
 
 // Deja solo los clips que el usuario puede ver (los de sus partidas, los de
-// su club, o todos si es admin; la función decide) y reemplaza video_url y
-// thumbnail_url por links firmados. Una llamada por cada SIGN_BATCH clips.
+// su club, los públicos, o todos si es admin; la función decide), reemplaza
+// video_url y thumbnail_url por links firmados y suma can_publish /
+// can_unpublish (qué botón mostrar). Una llamada por cada SIGN_BATCH clips.
 async function withSignedUrls(clips) {
   const signed = {};
   for (let i = 0; i < clips.length; i += SIGN_BATCH) {
-    const { clips: batch } = await callSign({ clipIds: clips.slice(i, i + SIGN_BATCH).map((c) => c.id) });
+    const { clips: batch } = await callApi("/api/clips/sign", { clipIds: clips.slice(i, i + SIGN_BATCH).map((c) => c.id) });
     Object.assign(signed, batch);
   }
 
   return clips
     .filter((c) => signed[c.id])
-    .map((c) => ({ ...c, video_url: signed[c.id].video_url, thumbnail_url: signed[c.id].thumbnail_url }));
+    .map((c) => ({ ...c, ...signed[c.id] }));
 }
 
 // Link para bajar un clip como archivo. La función lo niega (403) si el plan no permite descargar.
 export async function getClipDownloadUrl(clipId) {
-  const { download_url } = await callSign({ clipIds: [clipId], download: true });
+  const { download_url } = await callApi("/api/clips/sign", { clipIds: [clipId], download: true });
   return download_url;
+}
+
+// Publicar o despublicar (Fase 4, paso 3). Devuelve { is_public, can_publish, can_unpublish }.
+export function setClipPublic(clipId, publish) {
+  return callApi("/api/clips/publish", { clipId, publish });
 }
 
 // Todos los clips, del más nuevo al más viejo (pantalla Clips & Replays)
