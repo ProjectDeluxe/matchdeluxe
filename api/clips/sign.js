@@ -74,11 +74,26 @@ function canView(viewer, clip) {
   return !!clubId && viewer.clubIds.has(clubId);
 }
 
+// Si algo tira (por ejemplo, una variable de entorno mal cargada), el error
+// vuelve como JSON para que la app muestre el motivo y no un 500 sin detalle.
 export default async function handler(req, res) {
+  try {
+    return await signClips(req, res);
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+}
+
+async function signClips(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "method not allowed" });
 
   const jwt = (req.headers.authorization ?? "").replace(/^Bearer /, "");
   if (!jwt) return res.status(401).json({ error: "unauthorized" });
+
+  const missing = ["SUPABASE_URL", "SUPABASE_SERVICE_KEY"].filter((name) => !process.env[name]);
+  if (missing.length > 0) {
+    return res.status(500).json({ error: `Falta ${missing.join(" y ")} en Vercel` });
+  }
 
   const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY, {
     auth: { persistSession: false },
