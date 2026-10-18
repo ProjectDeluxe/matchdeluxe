@@ -36,6 +36,16 @@ export function withErrors(fn) {
   };
 }
 
+// Cliente con la service key
+export function serviceClient() {
+  const missing = ["SUPABASE_URL", "SUPABASE_SERVICE_KEY"].filter((name) => !process.env[name]);
+  if (missing.length > 0) throw new HttpError(500, `Falta ${missing.join(" y ")} en Vercel`);
+
+  return createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY, {
+    auth: { persistSession: false },
+  });
+}
+
 // Cliente con la service key y el usuario de la sesión (Authorization: Bearer <token>).
 export async function serviceAndUser(req) {
   if (req.method !== "POST") throw new HttpError(405, "method not allowed");
@@ -43,12 +53,7 @@ export async function serviceAndUser(req) {
   const jwt = (req.headers.authorization ?? "").replace(/^Bearer /, "");
   if (!jwt) throw new HttpError(401, "unauthorized");
 
-  const missing = ["SUPABASE_URL", "SUPABASE_SERVICE_KEY"].filter((name) => !process.env[name]);
-  if (missing.length > 0) throw new HttpError(500, `Falta ${missing.join(" y ")} en Vercel`);
-
-  const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY, {
-    auth: { persistSession: false },
-  });
+  const supabase = serviceClient();
 
   const { data: auth, error } = await supabase.auth.getUser(jwt);
   if (error || !auth?.user) throw new HttpError(401, "unauthorized");
@@ -144,4 +149,35 @@ export function thumbPath(clip) {
 
 export function videoPath(clip) {
   return clip.storage_path || pathFromPublicUrl(clip.video_url);
+}
+
+// Clip público para la página /c/:id, la vista previa y la miniatura (paso 4).
+// Devuelve null si no existe, no es público, no está listo o venció, así quien
+// tenga el link de un clip despublicado no ve nada. Solo los datos que se
+// muestran: nada de ids de usuarios ni de jugadores.
+const PUBLIC_SELECT = `
+  id, status, expired_at, is_public, storage_path, video_url, thumbnail_url, duration_sec, created_at,
+  player1:players!player1_id(name),
+  player2:players!player2_id(name),
+  table:tables!table_id(label, club:clubs(name))
+`;
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export async function publicClip(supabase, id) {
+  if (typeof id !== "string" || !UUID_RE.test(id)) return null;
+  const { data: clip, error } = await supabase.from("clips").select(PUBLIC_SELECT).eq("id", id).maybeSingle();
+  if (error) throw error;
+  if (!clip || !clip.is_public || clip.status !== "ready" || clip.expired_at) return null;
+  return {
+    id: clip.id,
+    player1: clip.player1?.name ?? "Jugador 1",
+    player2: clip.player2?.name ?? "Jugador 2",
+    club: clip.table?.club?.name ?? null,
+    table: clip.table?.label ?? null,
+    created_at: clip.created_at,
+    duration_sec: clip.duration_sec,
+    videoPath: videoPath(clip),
+    thumbPath: thumbPath(clip),
+  };
 }

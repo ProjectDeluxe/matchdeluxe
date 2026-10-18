@@ -63,6 +63,37 @@ function PublishButton({ clip, onChange }) {
   );
 }
 
+// Compartir el link de un clip público (Fase 4, paso 4): el menú de compartir
+// del celu si existe; si no, copia el link.
+function ShareButton({ clipId }) {
+  const [copied, setCopied] = useState(false);
+  const url = `${window.location.origin}/c/${clipId}`;
+
+  async function share() {
+    if (navigator.share) {
+      try {
+        await navigator.share({ url });
+      } catch {
+        // cerró el menú sin compartir
+      }
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      window.prompt("Copiá el link del clip:", url);
+    }
+  }
+
+  return (
+    <button type="button" className="clip-download" onClick={share}>
+      {copied ? "Link copiado" : "🔗 Compartir"}
+    </button>
+  );
+}
+
 // Grilla de clips guardados (la usan la pantalla Clips y el perfil del jugador).
 // canDownload: el plan del usuario logueado permite descargar (Fase 3).
 export default function ClipList({ clips: initialClips, canDownload = false, emptyText = "Todavía no hay clips guardados." }) {
@@ -115,6 +146,7 @@ export default function ClipList({ clips: initialClips, canDownload = false, emp
                 </Link>
               )
             )}
+            {c.is_public && <ShareButton clipId={c.id} />}
             <PublishButton clip={c} onChange={(change) => setChanges((prev) => ({ ...prev, [c.id]: change }))} />
           </div>
         </li>

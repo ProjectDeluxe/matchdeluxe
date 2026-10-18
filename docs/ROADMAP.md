@@ -1,6 +1,6 @@
 # PoolAppDeluxe — Roadmap y arquitectura (v1)
 
-Documento vivo. Última actualización: 2026-10-18 (Fase 3 cerrada y pasos 1 a 3 de la Fase 4 en producción), a partir de la revisión del código existente y la definición de producto con Agus.
+Documento vivo. Última actualización: 2026-10-18 (Fase 3 cerrada, pasos 1 a 3 de la Fase 4 en producción y paso 4 en código), a partir de la revisión del código existente y la definición de producto con Agus.
 
 > **Actualización 2026-10-17:** Fase 3 cerrada. Agus probó en la mesa la repetición sin recorte con OBS real, probó las cuentas (crear un club con una cuenta que no es admin, darle acceso a un staff, cargar un partido jugado, el límite del plan gratis y el reclamo por celu; del invitado por QR se probó la página, falta una partida entera) y confirmó Anonymous sign-ins en Supabase. Las variables de Vercel del job de borrado se habían dado por confirmadas pero no estaban: se cargaron el 2026-10-17 al desplegar el paso 2 de la Fase 4 (6.3, 6.9). El cobro (proveedor y precios) no bloquea el piloto: mientras tanto los planes pagos se activan a mano. Lo que queda abierto de la Fase 3 está en 6.8 y el plan de la Fase 4 en 6.9.
 
@@ -370,7 +370,7 @@ Esto depende de cosas que todavía no existen (login/panel de club, Fase 1 del m
 - Vista de todas las mesas desde una PC maestra.
 - Edición automática con IA del partido completo.
 - **Tele de la mesa abierta con QR (pedido de Agus, 2026-10-17):** al abrir una mesa, el agente pone en la tele el vivo de la mesa en grande con el QR de la mesa, para entrar con cuenta o como invitado, y al arrancar la partida pasa a la pantalla de partida de siempre. Va junto con el HUD de la partida (marcador y QR) integrado en la transmisión de OBS, que se habló en otra conversación y todavía no está en este documento.
-- **Rediseño visual de toda la app (pedido de Agus, 2026-10-17):** hoy se ve mal en el celu y en la PC. Por ejemplo, la pantalla de la mesa por QR (nueva partida) se sale del ancho del celu: se cortan el nombre, el selector de rival y el campo del celu. Hay que revisar el CSS completo, mobile primero.
+- **Rediseño visual de toda la app (pedido de Agus, 2026-10-17):** hoy se ve mal en el celu y en la PC. Por ejemplo, la pantalla de la mesa por QR (nueva partida) se sale del ancho del celu: se cortan el nombre, el selector de rival y el campo del celu. Hay que revisar el CSS completo, mobile primero. Va apenas se cierre la Fase 4 (Agus, 2026-10-18).
 - `public/manifest.json` pide `/icon-192.png`, que no está en `public/` (el navegador avisa del error en la consola). Va con el rediseño.
 
 ### 6.8 Fase 3 — cierre (2026-10-17)
@@ -380,7 +380,7 @@ Fase 3 cerrada: planes y límites (6.3), modelo de cuentas (6.4), vivo y repetic
 - **CAPTCHA de Auth** antes de abrir mesas en un club real (6.4).
 - ~~Pruebas no confirmadas al cierre: el límite del plan free y el reclamo de un jugador por celu~~ → probadas el 2026-10-17. Para probar sin SMS (Twilio todavía no está configurado) se usan números de prueba de Supabase (Authentication → Sign In / Providers → Phone → Test Phone Numbers and OTPs), con código fijo: `541100000000` (Pro), `541100000001` (gratis, dueña de un club de prueba) y `541100000002` (reclamo). Borrarlos antes de abrir a un club real.
 - Falta jugar una partida entera como invitado por el QR de la mesa, desde una pestaña privada (la página del QR ya se probó con una cuenta). Ojo al probar: el QR de la mesa está en 🏢 Clubs → mesa → QR; el que aparece en la pantalla de la partida es otro (lleva al control de esa partida y pide login).
-- Confirmar la primera corrida del job de borrado (nunca había corrido por falta de variables, 6.3): Vercel → Logs, `/api/cron/expire-clips`, después de las 7 UTC.
+- Confirmar la primera corrida del job de borrado (nunca había corrido por falta de variables, 6.3): Vercel → Logs, `/api/cron/expire-clips`, después de las 7 UTC. 2026-10-18: la consulta en `clips` dio `vencidos_sin_borrar` = 0 y `borrados_hoy` = 0; no había nada vencido, así que todavía no se puede confirmar. Vercel Logs no está disponible en el plan Hobby: revisar por SQL o con Settings → Cron Jobs → Run.
 - `agent/replay-agent/README.md` todavía dice que el buffer de repetición va en 60 s; lo correcto es ~65 s (6.5).
 
 **Fase 4 — Publicar y compartir.** Feed o galería de clips públicos, compartir por link, descarga habilitada según plan.
@@ -435,13 +435,23 @@ Fase 3 cerrada: planes y límites (6.3), modelo de cuentas (6.4), vivo y repetic
 - **Probado por Agus (2026-10-18):** todas las pruebas de abajo funcionan.
 - **Pruebas:** con Pro, publicar un clip que guardaste (aparece "Público"); con la cuenta gratis, guardar uno y ver que no aparece Publicar (y que la función da 403 si se la llama a mano); entrar como el rival o como staff del club y despublicarlo; volver con el dueño y ver que ya no puede publicarlo ("Uno de los jugadores lo despublicó"); el dueño despublica el suyo y lo puede volver a publicar; una cuenta ajena ve el clip público pero sin botón.
 
+**Paso 4 — hecho en código (2026-10-18), falta pasar a producción:**
+- Página pública `/c/:id` (`src/clips/ClipPublico.jsx`), sin login, como `/mesa/:token`: video, jugadores, club y mesa, fecha y duración, y un link "Abrir PoolAppDeluxe". Sin descarga. Si el clip no existe, no es público, no está listo o venció: "Este clip no está disponible".
+- `api/clips/public.js` (GET, sin sesión): devuelve el clip solo si es público, está listo y no venció, con video y miniatura firmados por 1 hora y solo lo que se muestra (nombres, club, mesa, fecha, duración; ningún id de usuario ni de jugador).
+- **Vista previa para WhatsApp:** quien arma la vista previa no corre JavaScript, así que `vercel.json` manda `/c/:id` a `api/share.js`, que toma el `index.html` del mismo deploy (lo pide a `https://<host>/index.html`: lo genera `vite build` con los nombres de archivos de cada deploy, y así no hay que empaquetarlo en la función), le agrega `og:title` ("Agus vs Nano"), `og:description` (club · mesa · fecha · duración), `og:image`, `og:url`, `og:type` y las de Twitter, todo escapado, y lo devuelve; en el navegador la app arranca igual. Un clip que no es público recibe la vista previa genérica, sin datos del clip.
+- `og:image` apunta a `api/clips/thumb.js?id=`, una URL que no cambia y redirige (302) a una miniatura firmada nueva; si el clip no es público o no tiene miniatura, a `public/og-default.jpg` (1200×630, sacada del fondo de la app). La vista previa y la redirección quedan 5 minutos en la CDN de Vercel: un clip despublicado puede seguir mostrando su vista previa hasta 5 minutos, y WhatsApp guarda las suyas por su cuenta.
+- App: en un clip público, botón 🔗 Compartir: abre el menú de compartir del celu y, si no hay, copia el link (`<dominio>/c/<id>`) y avisa "Link copiado".
+- **No hace falta migración.**
+- **Para pasar a producción:** push y esperar que Vercel diga Ready.
+- **Pruebas:** publicar un clip y tocar Compartir; abrir el link en una pestaña privada (se ve sin login, sin descarga); mandarse el link por WhatsApp y ver la miniatura con "Jugador vs Jugador"; despublicarlo y abrir el link otra vez ("Este clip no está disponible"); un link con un id inventado da lo mismo.
+
 **Costo a vigilar:** la transferencia, no el storage. Con Supabase Pro, 250 GB son ~96.000 reproducciones de un clip de 1 minuto por mes (6.3).
 
 **Fase 5 — Endurecer para producción real.** Ajustar las políticas RLS (hoy abiertas a "cualquier autenticado"), moderación de contenido público, monitoreo de mini-PCs (saber si una cámara se cayó), limpieza del código muerto y validaciones pendientes del punto 3.
 
 ## 7. Próximo paso concreto
 
-**Actualizado 2026-10-18:** Fases 1, 2 y 3 cerradas (lo que queda abierto de la 3, incluido el cobro, en 6.8). Siguiente: Fase 4, arrancando por el paso 1 de 6.9 (bucket privado y links firmados), que ya está en producción y probado. El paso 2 (links firmados por el servidor y descarga según plan) también está en producción y funciona. El paso 3 (publicar y despublicar) también está en producción y probado (6.9). Sigue el paso 4 (página de clip compartible, `/c/:id`, que se ve sin login, con una función en `api/` que arma la vista previa para WhatsApp).
+**Actualizado 2026-10-18:** Fases 1, 2 y 3 cerradas (lo que queda abierto de la 3, incluido el cobro, en 6.8). Siguiente: Fase 4, arrancando por el paso 1 de 6.9 (bucket privado y links firmados), que ya está en producción y probado. El paso 2 (links firmados por el servidor y descarga según plan) también está en producción y funciona. El paso 3 (publicar y despublicar) también está en producción y probado. El paso 4 (página de clip compartible, `/c/:id`, con vista previa para WhatsApp) está en código: falta desplegarlo y probarlo (6.9). Después, el paso 5 (feed de clips públicos) y, al cerrar la Fase 4, el rediseño visual (6.7).
 
 ## 8. Expansión a otros deportes (tenis y lo que siga)
 

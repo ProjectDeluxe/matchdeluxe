@@ -108,3 +108,15 @@ button.clip-download:disabled {
   border: 1px solid #50e090;
   vertical-align: middle;
 }
+
+.clip-public-page {
+  max-width: 640px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.clip-public-app {
+  align-self: center;
+}
