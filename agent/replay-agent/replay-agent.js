@@ -10,7 +10,7 @@
 //      tiempo y, cuando hay una repetición nueva, la pasa en esa misma pantalla
 //      y vuelve sola al vivo. Dos formas (TELE_MODO en el .env):
 //      - "obs" (por defecto, lo más liviano): un proyector de OBS a pantalla
-//        completa con una escena "PoolApp Tele" que el agente arma solo. La
+//        completa con una escena "MatchDeluxe Tele" que el agente arma solo. La
 //        repetición es una fuente de video de OBS que se prende y se apaga.
 //      - "navegador": una página local (replay-display.html) en Chrome que toma
 //        el vivo de la cámara virtual de OBS. Más pesado: la PC dibuja el
@@ -46,10 +46,10 @@ const TV_MODE = (process.env.TELE_MODO || "obs").trim().toLowerCase() === "naveg
 // al conectar) y pantalla del proyector (vacío = la última, la tele si hay dos).
 const LIVE_SCENE = (process.env.ESCENA_MESA || "").trim();
 const TV_MONITOR = (process.env.TELE_MONITOR || "").trim();
-const TV_SCENE = "PoolApp Tele";
-const REPLAY_INPUT = "PoolApp Repetición";
-const REPLAY_LABEL = "PoolApp Cartel repetición";
-const LIVE_LABEL = "PoolApp Cartel en vivo";
+const TV_SCENE = "MatchDeluxe Tele";
+const REPLAY_INPUT = "MatchDeluxe Repetición";
+const REPLAY_LABEL = "MatchDeluxe Cartel repetición";
+const LIVE_LABEL = "MatchDeluxe Cartel en vivo";
 const REPLAYS_DIR = path.join(os.tmpdir(), "poolappdeluxe-replays");
 // Modo navegador: abrir la pantalla de la tele al arrancar (solo Windows). ABRIR_TELE=0 lo desactiva.
 const OPEN_DISPLAY = (process.env.ABRIR_TELE || "1").trim() !== "0";
@@ -136,7 +136,7 @@ async function ensureOBSOutputs() {
 }
 
 // ---------- Tele en modo obs ----------
-// Escena "PoolApp Tele" (de abajo hacia arriba): la escena de la mesa (el vivo),
+// Escena "MatchDeluxe Tele" (de abajo hacia arriba): la escena de la mesa (el vivo),
 // la repetición a pantalla completa y los dos carteles. Se muestra en un
 // proyector de OBS a pantalla completa. La grabación sigue saliendo de la escena
 // de la mesa, así que las repeticiones no quedan grabadas adentro de los clips.
@@ -369,7 +369,7 @@ function openDisplay(url) {
   }
   const args = [
     "--kiosk",
-    `--user-data-dir=${path.join(os.homedir(), "AppData", "Local", "PoolAppDeluxe", "tele")}`,
+    `--user-data-dir=${path.join(os.homedir(), "AppData", "Local", "MatchDeluxe", "tele")}`,
     "--autoplay-policy=no-user-gesture-required",
     "--use-fake-ui-for-media-stream",
     "--no-first-run",

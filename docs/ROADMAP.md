@@ -485,6 +485,7 @@ Fase 3 cerrada: planes y límites (6.3), modelo de cuentas (6.4), vivo y repetic
   3. Cerrar sesión desde Perfil y volver a entrar.
 - **Pendiente:** lo del QR que abre el navegador en vez de la app instalada (6.7).
 - **Escanear QR dentro de la app (2026-10-18), pendiente de probar:** botón "Escanear QR" en Partida (`/partida/escanear`), y manifest con `id`, `scope` e íconos para que Android la instale como app. Detalle en 6.7.
+- **Nombre definitivo (2026-10-18): MatchDeluxe** (antes PoolAppDeluxe). Cambiado en la app (barra, login, control, clip compartido, título, manifest), la vista previa de WhatsApp (`api/share.js`, descripción ahora genérica) y el agente de repetición (textos y nombres de escenas de OBS: "MatchDeluxe Tele"; las escenas viejas "PoolApp" quedan para borrar a mano). Sin cambiar a propósito: nombres internos de `package.json`, carpetas temporales. **Pendiente:** renombrar repo de GitHub, proyecto/dominio de Vercel y la carpeta local (instructivo en el proyecto).
 
 ## 7. Próximo paso concreto
 

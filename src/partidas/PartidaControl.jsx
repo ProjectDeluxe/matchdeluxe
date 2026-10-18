@@ -174,7 +174,7 @@ export default function PartidaControl() {
         <span className={`ctrl-badge ${finished ? "badge-off" : "badge-live"}`}>
           {finished ? "Terminada" : "En vivo"}
         </span>
-        <span className="ctrl-title">PoolAppDeluxe</span>
+        <span className="ctrl-title">MatchDeluxe</span>
       </div>
 
       {/* Marcador */}

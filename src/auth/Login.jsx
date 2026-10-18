@@ -66,7 +66,7 @@ export default function Login() {
   return (
     <div className="login-wrapper">
       <div className="login-card">
-        <h1 className="login-title">PoolAppDeluxe</h1>
+        <h1 className="login-title">MatchDeluxe</h1>
 
         {step === "phone" ? (
           <>

@@ -1,7 +1,7 @@
 {
   "id": "/",
-  "name": "PoolAppDeluxe",
-  "short_name": "PoolAppDeluxe",
+  "name": "MatchDeluxe",
+  "short_name": "MatchDeluxe",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

@@ -55,7 +55,7 @@ export default function ClipPublico() {
         </div>
       )}
       <Link className="btn btn-secondary clip-public-app" to="/">
-        Abrir PoolAppDeluxe
+        Abrir MatchDeluxe
       </Link>
     </div>
   );

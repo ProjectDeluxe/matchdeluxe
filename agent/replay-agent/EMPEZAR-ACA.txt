@@ -1,8 +1,8 @@
-POOLAPPDELUXE — AGENTE DE REPETICION
+MATCHDELUXE — AGENTE DE REPETICION
 Instrucciones para la PC que tiene la camara y OBS conectados a la mesa.
 
 Esto NO se instala solo ni se descarga logueandote en la app. La app de
-PoolAppDeluxe (la que esta en Vercel) corre en un navegador y no tiene forma
+MatchDeluxe (la que esta en Vercel) corre en un navegador y no tiene forma
 de instalar ni prender programas en tu computadora por si sola — ningun sitio
 web puede hacer eso, es una regla de seguridad de todos los navegadores, no
 un problema de esta app en particular.

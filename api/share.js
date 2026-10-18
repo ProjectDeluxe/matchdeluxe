@@ -9,7 +9,7 @@
 // archivos de cada deploy, y así siempre es el que corresponde.
 import { publicClip, serviceClient } from "./_lib/clips.js";
 
-const APP_NAME = "PoolAppDeluxe";
+const APP_NAME = "MatchDeluxe";
 
 function escapeHtml(text) {
   return String(text)
@@ -44,7 +44,7 @@ export default async function share(req, res) {
 
   let preview = {
     title: APP_NAME,
-    description: "Clips de pool en vivo, guardados desde la mesa.",
+    description: "Clips en vivo, guardados en el club.",
     image: `${origin}/og-default.jpg`,
     url: `${origin}/c/${encodeURIComponent(id ?? "")}`,
   };

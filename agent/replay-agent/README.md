@@ -1,12 +1,12 @@
 # Replay Agent — puesta en marcha (probar hoy)
 
-Esto corre en la PC que tiene la cámara y OBS conectados a la mesa de pool — **no** en la misma compu que el resto del código de PoolAppDeluxe (a menos que sean la misma máquina).
+Esto corre en la PC que tiene la cámara y OBS conectados a la mesa de pool — **no** en la misma compu que el resto del código de MatchDeluxe (a menos que sean la misma máquina).
 
 ## 1. Preparar OBS
 
 1. Abrí OBS con la cámara de la mesa ya agregada como fuente en una escena.
 2. **Activar el Replay Buffer:** Configuración → Salida → pestaña "Buffer de repetición". Activalo, y poné el "Tiempo máximo de repetición" en **60 segundos** (así cubre los tres botones — 20s/40s/1min — recortando después). Aplicá.
-3. No hace falta iniciar a mano el buffer: el agente lo prende solo al conectarse a OBS. Tampoco hace falta armar nada para la tele: el agente crea en OBS la escena "PoolApp Tele" (ver paso 4). Dejá en el Programa la escena con la cámara de la mesa.
+3. No hace falta iniciar a mano el buffer: el agente lo prende solo al conectarse a OBS. Tampoco hace falta armar nada para la tele: el agente crea en OBS la escena "MatchDeluxe Tele" (ver paso 4). Dejá en el Programa la escena con la cámara de la mesa.
 4. **Activar el WebSocket:** Herramientas → "WebSocket Server Settings" (o "Configuración del servidor WebSocket"). Activá el servidor. Anotá el puerto (por defecto `4455`) y, si le pusiste contraseña, anotala también — van al `.env`.
 
 ## 2. Preparar esta carpeta en esa PC
@@ -19,7 +19,7 @@ Esto corre en la PC que tiene la cámara y OBS conectados a la mesa de pool — 
    npm install
    ```
 5. Copiá `.env.example` a `.env` y completalo:
-   - `SUPABASE_URL` y `SUPABASE_SERVICE_KEY`: los sacás del dashboard de Supabase del proyecto de PoolAppDeluxe → Configuración → API. **Ojo:** es la `service_role` key (secreta), no la misma que usa la app. No la subas a git ni la compartas.
+   - `SUPABASE_URL` y `SUPABASE_SERVICE_KEY`: los sacás del dashboard de Supabase del proyecto de MatchDeluxe → Configuración → API. **Ojo:** es la `service_role` key (secreta), no la misma que usa la app. No la subas a git ni la compartas.
    - `OBS_WS_URL` / `OBS_WS_PASSWORD`: lo que anotaste en el paso 1.4 (si no le pusiste contraseña al WebSocket, dejá `OBS_WS_PASSWORD` vacío).
    - `TABLE_ID`: el ID de la mesa donde está esta PC. En la app, entrá a 🏢 Clubs y mesas y tocá "copiar ID" al lado de la mesa. Con esto el agente solo reacciona a partidas creadas en esa mesa y la mesa aparece como `online` mientras el agente corre. Dejalo vacío para probar en casa con cualquier partida.
    - `MATCH_ID`: dejalo vacío para probar con cualquier partida.
@@ -42,16 +42,16 @@ Supabase Realtime: SUBSCRIBED
 
 La tele muestra la mesa **en vivo** todo el tiempo, con el cartel "● EN VIVO". Cuando alguien pide una repetición, la pasa ahí mismo con el cartel "REPETICIÓN" y, al terminar, vuelve sola al vivo.
 
-Por defecto (`TELE_MODO=obs`) la tele es un **proyector de OBS a pantalla completa**, que el agente abre solo al conectarse. Muestra una escena "PoolApp Tele" que el agente arma solo: adentro tiene la escena de la mesa (el vivo), una fuente de video para la repetición y los dos carteles. Es lo más liviano, porque OBS dibuja la imagen una sola vez. Lo que se graba sigue saliendo de la escena de la mesa, así que las repeticiones no quedan grabadas adentro de los clips.
+Por defecto (`TELE_MODO=obs`) la tele es un **proyector de OBS a pantalla completa**, que el agente abre solo al conectarse. Muestra una escena "MatchDeluxe Tele" que el agente arma solo: adentro tiene la escena de la mesa (el vivo), una fuente de video para la repetición y los dos carteles. Es lo más liviano, porque OBS dibuja la imagen una sola vez. Lo que se graba sigue saliendo de la escena de la mesa, así que las repeticiones no quedan grabadas adentro de los clips.
 - El proyector va a la última pantalla (la tele, si la PC tiene dos). Para elegir otra, poné su número en `TELE_MONITOR` (0 es la principal). Para cerrarlo: Esc.
-- La escena de la mesa es la que esté en el Programa al arrancar el agente. Si querés fijarla, poné su nombre en `ESCENA_MESA`. **No pongas "PoolApp Tele" en el Programa**: se grabarían las repeticiones.
+- La escena de la mesa es la que esté en el Programa al arrancar el agente. Si querés fijarla, poné su nombre en `ESCENA_MESA`. **No pongas "MatchDeluxe Tele" en el Programa**: se grabarían las repeticiones.
 - El sonido de la repetición sale por los parlantes de la PC (monitoreo de OBS), sin entrar a la grabación.
 
 La otra opción (`TELE_MODO=navegador`) es la página `http://localhost:5051/replay-display.html` en Chrome, que toma el vivo de la cámara virtual de OBS y tiene una cortina animada entre el vivo y la repetición. Es bastante más pesada (la PC dibuja el video dos veces): en una notebook común traba OBS. En ese modo el agente prende solo la cámara virtual y abre Chrome a pantalla completa (`ABRIR_TELE=0` lo desactiva, `TELE_POSICION` lo manda a una segunda pantalla).
 
 ## 5. Probarlo desde el celu
 
-1. Abrí una partida en PoolAppDeluxe, entrá al control desde el celu (como ya venís haciendo con el QR).
+1. Abrí una partida en MatchDeluxe, entrá al control desde el celu (como ya venís haciendo con el QR).
 2. Tocá cualquiera de los tres botones de repetición (20s / 40s / 1min).
 3. En la terminal donde corre `npm start` deberías ver los logs del pedido llegando y a OBS guardando el buffer.
 4. En la tele, en unos segundos, el vivo corta a la repetición y después vuelve solo al vivo.

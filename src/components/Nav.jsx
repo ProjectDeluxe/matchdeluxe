@@ -21,7 +21,7 @@ export default function Nav() {
 
   return (
     <nav className="nav" aria-label="Principal">
-      <span className="nav-logo">PoolAppDeluxe</span>
+      <span className="nav-logo">MatchDeluxe</span>
       <ul className="nav-list" style={{ "--nav-items": items.length }}>
         {items.map((item) => (
           <li key={item.to}>
