@@ -522,6 +522,7 @@ Fase 3 cerrada: planes y límites (6.3), modelo de cuentas (6.4), vivo y repetic
 - **Renombrar mesa:** botón "renombrar" en cada mesa de Mi club (Clubs y mesas). El ID no cambia, así que el `TABLE_ID` del agente sigue sirviendo.
 - **Perfil con pestañas, como Instagram:** debajo de las estadísticas, una fila de íconos que cambia de sección: clips (la que se abre primero), historial y, en tu propio perfil, opciones (club, suscripción, cerrar sesión). En el perfil de otro jugador la pestaña de opciones queda vacía por ahora: más adelante, desafiarlo o arreglar un partido para un horario (idea de Agus).
 - **Pendiente (pedido de Agus):** mejorar los historiales para ver datos cruzados (por ejemplo, el cara a cara contra un rival).
+- **Borrar un jugador con partidas:** fallaba con `matches_player2_id_fkey` porque en producción las claves de jugadores en `matches` no tenían `ON DELETE SET NULL` (`supabase-schema.sql` sí lo dice, pero la tabla era anterior). Migración `2026-10-19-borrar-jugador.sql`: las rehace, así las partidas quedan y el jugador borrado sale como "Jugador". Pendiente: correrla y probar borrar el perfil de prueba.
 
 ## 7. Próximo paso concreto
 
