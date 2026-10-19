@@ -64,6 +64,11 @@ export async function setTableDiscipline(id, discipline) {
   if (error) throw error;
 }
 
+export async function renameTable(id, label) {
+  const { error } = await supabase.from("tables").update({ label }).eq("id", id);
+  if (error) throw error;
+}
+
 export async function deleteTable(id) {
   const { error } = await supabase.from("tables").delete().eq("id", id);
   if (error) throw error;

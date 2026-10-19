@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getClubs, createClub, deleteClub, createTable, deleteTable } from "../services/ClubService";
+import { getClubs, createClub, deleteClub, createTable, renameTable, deleteTable } from "../services/ClubService";
 import { addClubMemberByPhone, createMyClub, logMatchResult } from "../services/AccountService";
 import { useAuth } from "../context/AuthContext";
 import { usePlayers } from "../context/PlayerContext";
@@ -141,6 +141,12 @@ export default function Clubs() {
     }
   }
 
+  function handleRenameTable(table) {
+    const label = window.prompt("Nuevo nombre de la mesa:", table.label)?.trim();
+    if (!label || label === table.label) return;
+    run(() => renameTable(table.id, label));
+  }
+
   function handleDeleteTable(table) {
     if (!window.confirm(`¿Borrar "${table.label}"? Las partidas quedan, pero sin mesa.`)) return;
     run(() => deleteTable(table.id));
@@ -238,6 +244,9 @@ export default function Clubs() {
                 <li key={t.id} className="table-row">
                   <span>{t.label}</span>
                   <span className={`table-status table-${t.status}`}>{t.status}</span>
+                  <button className="table-copy" onClick={() => handleRenameTable(t)}>
+                    renombrar
+                  </button>
                   <button className="table-copy" onClick={() => handleCopyId(t)} title="Copiar ID para el TABLE_ID del agente">
                     {copiedId === t.id ? "✓ copiado" : "copiar ID"}
                   </button>
