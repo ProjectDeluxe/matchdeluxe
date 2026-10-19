@@ -512,7 +512,9 @@ Fase 3 cerrada: planes y límites (6.3), modelo de cuentas (6.4), vivo y repetic
 
 - **Abrir/cerrar mesa y QR, en Nueva partida:** al elegir una mesa se ve si está abierta, cerrada o en partida, con un botón para abrirla o cerrarla; abierta, muestra ahí su QR para subirse (el mismo QR fijo de 6.4). Solo aparecen las mesas de tus clubs (todas si sos admin), así que quien la ve es del club. En Mi club (Clubs y mesas) quedó solo la gestión: agregar, borrar y copiar el ID de la mesa.
 - **Jugar contra un invitado:** en Jugador 2 hay una opción "Invitado (sin cuenta)" con nombre libre. Al arrancar se crea un jugador invitado (`is_guest`, sin club ni dueño), el mismo mecanismo que usa la página del QR, así que si después entra con su celu puede reclamarlo. No hizo falta migración.
-- **Pendiente:** probarlo en producción (abrir una mesa, ver el QR, cerrarla y arrancar una partida contra un invitado).
+- ~~Pendiente: probarlo en producción~~ → probado por Agus el 2026-10-19.
+- **Arrancar desde el celu va directo al control:** antes, al crear una partida desde el celu se abría la pantalla con el QR para controlarla desde un celu, y para llegar a los botones de repetición había que salir y volver a entrar. Ahora desde un celu (pantalla táctil) va al control; desde la PC sigue mostrando el QR.
+- **Punto rojo que parpadea** en las partidas en curso de las listas (Partida e historial).
 
 ## 7. Próximo paso concreto
 

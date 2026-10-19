@@ -61,7 +61,10 @@ export default function NuevaPartida() {
         reloadPlayers();
       }
       const match = await startMatch(p1, rivalId, table);
-      navigate(`/partida/${match.id}`);
+      // Desde el celu vas directo al control. Desde la PC, a la pantalla con el
+      // QR para manejar la partida desde un celu.
+      const mobile = window.matchMedia("(pointer: coarse)").matches;
+      navigate(mobile ? `/partida/${match.id}/control` : `/partida/${match.id}`);
     } catch (err) {
       setError(err.message);
       setBusy(false);

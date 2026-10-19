@@ -312,6 +312,11 @@ a.list-row:hover { opacity: 1; background: var(--surface); }
 }
 .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
 
+/* Partida en curso: punto rojo que parpadea */
+.live-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #ef4444; animation: live-blink 1.2s ease-in-out infinite; vertical-align: middle; }
+@keyframes live-blink { 50% { opacity: 0.25; } }
+@media (prefers-reduced-motion: reduce) { .live-dot { animation: none; } }
+
 /* --- Pestañas --- */
 .tabs {
   display: flex;

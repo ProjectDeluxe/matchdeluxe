@@ -25,13 +25,13 @@ export default function MatchRow({ match: m, nameOf, me = null }) {
     <li>
       <Link className="list-row" to={!finished && mine ? `/partida/${m.id}/control` : `/partida/${m.id}`}>
         {mine ? (
-          <span className={`result${won ? " result-win" : ""}`}>{finished ? (won ? "G" : "P") : "·"}</span>
+          <span className={`result${won ? " result-win" : ""}`}>{finished ? (won ? "G" : "P") : <span className="live-dot" title="En curso" />}</span>
         ) : null}
         <span className="list-row-main">
           <span className="list-row-title">
             {mine ? `vs ${nameOf(rival)}` : `${nameOf(m.player1_id)} vs ${nameOf(m.player2_id)}`}
           </span>
-          {!finished && <span className="list-row-sub">En curso</span>}
+          {!finished && <span className="list-row-sub">{!mine && <span className="live-dot" />} En curso</span>}
         </span>
         <span className="score">{a}–{b}</span>
         <span className="list-row-sub match-date">{shortDate(m.started_at)}</span>
