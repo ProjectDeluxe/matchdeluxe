@@ -9,13 +9,16 @@ import MatchRow from "../partidas/MatchRow.jsx";
 import Avatar from "../components/Avatar.jsx";
 import { usePlan } from "../plan/usePlan";
 import { useAuth } from "../context/AuthContext";
+import { ClipsIcon, HistoryIcon, SettingsIcon } from "../components/Icons.jsx";
 import "./PerfilJugador.css";
 
 const RECENT = 5;
 
 // Perfil de un jugador: foto, estadísticas, últimas partidas y clips. Lo usan
 // /jugadores/:id y tu propio perfil (/perfil).
-// options: lo que va debajo de las estadísticas (las opciones de tu perfil).
+// Debajo de las estadísticas, pestañas como en Instagram: clips, historial y,
+// opciones: las tuyas (options) en tu perfil; en el de otro, vacía por ahora
+// (más adelante: desafiarlo o arreglar un partido para un horario).
 export function PlayerProfile({ playerId, own = false, options = null }) {
   const { players, editPlayer, removePlayer } = usePlayers();
   const { matches } = useMatches();
@@ -24,6 +27,7 @@ export function PlayerProfile({ playerId, own = false, options = null }) {
   const navigate = useNavigate();
   const [clips, setClips] = useState(null);
   const [showAll, setShowAll] = useState(false);
+  const [tab, setTab] = useState("clips");
   const [error, setError] = useState(null);
 
   useEffect(() => {
@@ -48,6 +52,11 @@ export function PlayerProfile({ playerId, own = false, options = null }) {
   const wins = finished.filter((m) => m.winner_id === playerId).length;
   const winrate = finished.length ? Math.round((wins / finished.length) * 100) : 0;
   const shown = showAll ? myMatches : myMatches.slice(0, RECENT);
+  const tabs = [
+    { id: "clips", label: "Clips", Icon: ClipsIcon },
+    { id: "history", label: "Historial", Icon: HistoryIcon },
+    { id: "options", label: "Opciones", Icon: SettingsIcon },
+  ];
 
   async function changeAvatar(event) {
     const file = event.target.files[0];
@@ -97,10 +106,27 @@ export function PlayerProfile({ playerId, own = false, options = null }) {
         <div className="stat"><span className="stat-value">{winrate}%</span><span className="stat-label">Victorias</span></div>
       </div>
 
-      {options}
+      <div className="profile-tabs" role="tablist">
+        {tabs.map(({ id, label, Icon }) => (
+          <button
+            key={id}
+            type="button"
+            role="tab"
+            aria-selected={tab === id}
+            aria-label={label}
+            title={label}
+            className={`profile-tab${tab === id ? " profile-tab-active" : ""}`}
+            onClick={() => setTab(id)}
+          >
+            <Icon />
+          </button>
+        ))}
+      </div>
 
+      {tab === "options" && (options ?? <p className="empty">Pronto vas a poder desafiar a este jugador o arreglar un partido desde acá.</p>)}
+
+      {tab === "history" && (
       <section className="section">
-        <h2>Partidas</h2>
         {myMatches.length === 0 ? (
           <p className="empty">Todavía no jugó ninguna partida.</p>
         ) : (
@@ -116,9 +142,10 @@ export function PlayerProfile({ playerId, own = false, options = null }) {
           </>
         )}
       </section>
+      )}
 
+      {tab === "clips" && (
       <section className="section">
-        <h2>Clips</h2>
         {clips === null ? (
           <p className="loading">Cargando clips…</p>
         ) : (
@@ -130,6 +157,7 @@ export function PlayerProfile({ playerId, own = false, options = null }) {
           />
         )}
       </section>
+      )}
 
       {canDelete && (
         <button type="button" className="btn btn-danger btn-small profile-delete" onClick={handleDelete}>

@@ -520,6 +520,8 @@ Fase 3 cerrada: planes y límites (6.3), modelo de cuentas (6.4), vivo y repetic
 - **Disciplina por mesa (pool o ping pong):** una misma mesa física (misma cámara y misma PC con su `TABLE_ID`) puede usarse para pool o ping pong, sin crear una mesa por disciplina. La mesa guarda la disciplina que tiene ahora (`tables.discipline`) y la gente del club la cambia en Nueva partida, antes de arrancar. Cada partida guarda con qué disciplina se jugó (`matches.discipline`): en una mesa la copia un trigger desde la mesa (así también la que se arranca por QR, sin tocar `start_match_at_table`); sin mesa la elige quien la crea. El agente no cambia. El marcador sigue igual (puntos enteros); no se generaliza (sección 8). La disciplina se ve en la partida y, si es ping pong, en las listas. Migración `2026-10-19-disciplina.sql`.
 - ~~Pendiente: correr la migración y probar ping pong en la mesa y por QR~~ → migración corrida y probado por Agus el 2026-10-19. Queda borrar la mesa "Ping Pong" de The House si ya no hace falta.
 - **Renombrar mesa:** botón "renombrar" en cada mesa de Mi club (Clubs y mesas). El ID no cambia, así que el `TABLE_ID` del agente sigue sirviendo.
+- **Perfil con pestañas, como Instagram:** debajo de las estadísticas, una fila de íconos que cambia de sección: clips (la que se abre primero), historial y, en tu propio perfil, opciones (club, suscripción, cerrar sesión). En el perfil de otro jugador la pestaña de opciones queda vacía por ahora: más adelante, desafiarlo o arreglar un partido para un horario (idea de Agus).
+- **Pendiente (pedido de Agus):** mejorar los historiales para ver datos cruzados (por ejemplo, el cara a cara contra un rival).
 
 ## 7. Próximo paso concreto
 

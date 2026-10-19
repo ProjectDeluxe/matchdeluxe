@@ -27,6 +27,14 @@ export const UserIcon = () => (
   <Svg><circle cx="12" cy="8" r="4" /><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7" /></Svg>
 );
 
+export const HistoryIcon = () => (
+  <Svg><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" /></Svg>
+);
+
+export const SettingsIcon = () => (
+  <Svg><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0" /><circle cx="16" cy="6" r="2" /><circle cx="10" cy="12" r="2" /><circle cx="18" cy="18" r="2" /></Svg>
+);
+
 export const ChevronIcon = () => (
   <Svg size={18}><path d="M9 6l6 6-6 6" /></Svg>
 );

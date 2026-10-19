@@ -5,8 +5,8 @@ import { PlayerProfile } from "../jugadores/PerfilJugador.jsx";
 import { ChevronIcon } from "../components/Icons.jsx";
 import "./Perfil.css";
 
-// Tu perfil (la cuenta con la que entraste) y, abajo, las opciones: club,
-// suscripción y cerrar sesión. Reemplaza a los accesos 🏢, 💳, 📱 y ↩ de la barra.
+// Tu perfil (la cuenta con la que entraste) y, en su pestaña, las opciones:
+// club, suscripción y cerrar sesión. Reemplaza a los accesos 🏢, 💳, 📱 y ↩ de la barra.
 export default function Perfil() {
   const { user, account, signOut } = useAuth();
   const { plan } = usePlan();
@@ -20,9 +20,7 @@ export default function Perfil() {
   }
 
   const options = (
-    <section className="section">
-      <h2>Opciones</h2>
-      <ul className="list options">
+    <ul className="list options">
         {!guest && (
           <li>
             <Link className="list-row" to="/clubs">
@@ -52,8 +50,7 @@ export default function Perfil() {
             </span>
           </button>
         </li>
-      </ul>
-    </section>
+    </ul>
   );
 
   return (
@@ -70,7 +67,12 @@ export default function Perfil() {
         <h1>Perfil</h1>
       )}
 
-      {!account?.player && options}
+      {!account?.player && (
+        <section className="section">
+          <h2>Opciones</h2>
+          {options}
+        </section>
+      )}
 
     </div>
   );

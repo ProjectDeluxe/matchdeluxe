@@ -27,3 +27,17 @@
 }
 
 .profile-delete { align-self: flex-start; }
+
+/* Pestañas del perfil, como en Instagram: un ícono por sección */
+.profile-tabs { display: flex; border-bottom: 1px solid var(--line); }
+.profile-tab {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  padding: 12px 0;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--muted);
+}
+.profile-tab-active { color: var(--text); border-bottom-color: var(--text); }
