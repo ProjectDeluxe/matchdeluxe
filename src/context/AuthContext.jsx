@@ -70,6 +70,16 @@ export function AuthProvider({ children }) {
     return { data, error };
   }
 
+  // Google: sale de la app y vuelve logueado a la misma página. Hay que
+  // tener prendido el proveedor Google en Supabase (ROADMAP 6.11).
+  async function signInWithGoogle(redirectPath = "/") {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: window.location.origin + redirectPath },
+    });
+    return { error };
+  }
+
   // Invitado que escanea una mesa abierta: sesión anónima de Supabase (hay que
   // tener prendido "Anonymous sign-ins" en Auth). Si ya hay una sesión, se reusa.
   async function signInAsGuest() {
@@ -91,7 +101,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, account: userId ? account : null, refreshAccount, signInWithPhone, verifyOtp, signInAsGuest, signOut, devLogin }}>
+    <AuthContext.Provider value={{ user, loading, account: userId ? account : null, refreshAccount, signInWithPhone, verifyOtp, signInWithGoogle, signInAsGuest, signOut, devLogin }}>
       {children}
     </AuthContext.Provider>
   );

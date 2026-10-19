@@ -12,7 +12,7 @@ const COUNTRY_CODES = [
 ];
 
 export default function Login() {
-  const { signInWithPhone, verifyOtp, devLogin } = useAuth();
+  const { signInWithPhone, verifyOtp, signInWithGoogle, devLogin } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -58,6 +58,17 @@ export default function Login() {
     setLoading(false);
   }
 
+  async function handleGoogle() {
+    setLoading(true);
+    setError("");
+    const { error } = await signInWithGoogle(from);
+    if (error) {
+      setError("No se pudo entrar con Google. Intentá de nuevo.");
+      setLoading(false);
+    }
+    // Si anduvo, el navegador se va a Google y vuelve logueado.
+  }
+
   function handleOtpInput(e) {
     const val = e.target.value.replace(/\D/g, "").slice(0, 6);
     setOtp(val);
@@ -70,6 +81,10 @@ export default function Login() {
 
         {step === "phone" ? (
           <>
+            <button type="button" className="login-google" onClick={handleGoogle} disabled={loading}>
+              Continuar con Google
+            </button>
+            <div className="login-or"><span>o con tu celu</span></div>
             <p className="login-subtitle">Ingresá tu número para recibir un código por SMS</p>
             <form onSubmit={handleSendOtp} className="login-form">
               <div className="phone-input-row">

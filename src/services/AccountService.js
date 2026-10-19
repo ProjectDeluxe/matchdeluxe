@@ -53,7 +53,7 @@ export async function startMatchAtTable(token, player1Id, player2Id) {
   return data;
 }
 
-// Darle a alguien acceso a un club por su celu (admin o dueño del club).
+// Darle a alguien acceso a un club por su celu o su mail de Google (admin o dueño del club).
 // role: 'owner' (dueño) | 'staff'
 export async function addClubMemberByPhone(clubId, phone, role = "owner") {
   const { error } = await supabase.rpc("add_club_member_by_phone", { cid: clubId, member_phone: phone, member_role: role });

@@ -68,7 +68,7 @@ export default function Clubs() {
   const myClubIds = (account?.clubs ?? []).map((c) => c.id);
   const roleIn = (clubId) => (account?.clubs ?? []).find((c) => c.id === clubId)?.role;
   const canGrantAccess = (clubId) => isAdmin || roleIn(clubId) === "owner";
-  const [ownerPhones, setOwnerPhones] = useState({}); // club_id -> celu de quien recibe acceso
+  const [ownerPhones, setOwnerPhones] = useState({}); // club_id -> celu o mail de quien recibe acceso
   const [memberRoles, setMemberRoles] = useState({}); // club_id -> 'owner' | 'staff'
   const [notice, setNotice] = useState(null);
   const [qrTableId, setQrTableId] = useState(null);
@@ -182,7 +182,7 @@ export default function Clubs() {
 
   if (loading || !account) return <p className="loading">Cargando clubs…</p>;
   if (account.is_anonymous) {
-    return <p className="page empty">Para crear o manejar un club, entrá con tu celu.</p>;
+    return <p className="page empty">Para crear o manejar un club, entrá con tu cuenta.</p>;
   }
 
   const visibleClubs = isAdmin ? clubs : clubs.filter((c) => myClubIds.includes(c.id));
@@ -286,8 +286,8 @@ export default function Clubs() {
             {canGrantAccess(club.id) && (
               <form className="table-form" onSubmit={(e) => handleAddOwner(e, club)}>
                 <input
-                  type="tel"
-                  placeholder="Celu de quien va a manejar el club"
+                  type="text"
+                  placeholder="Celu o mail de quien va a manejar el club"
                   value={ownerPhones[club.id] ?? ""}
                   onChange={(e) => setOwnerPhones((p) => ({ ...p, [club.id]: e.target.value }))}
                 />
