@@ -508,6 +508,12 @@ Fase 3 cerrada: planes y límites (6.3), modelo de cuentas (6.4), vivo y repetic
 - **Configuración de OBS en la mesa:** codificador de hardware, 1280x720 a 30 fps, intervalo de fotogramas clave 1 s, Replay Buffer en 65 s (README del agente actualizado).
 - **Pendiente:** probar en la mesa con la configuración nueva de OBS y el agente actualizado; confirmar fotogramas omitidos cerca de 0 % y el peso de un clip de 60 s.
 
+### 6.13 Mesa e invitado desde Nueva partida (2026-10-19)
+
+- **Abrir/cerrar mesa y QR, en Nueva partida:** al elegir una mesa se ve si está abierta, cerrada o en partida, con un botón para abrirla o cerrarla; abierta, muestra ahí su QR para subirse (el mismo QR fijo de 6.4). Solo aparecen las mesas de tus clubs (todas si sos admin), así que quien la ve es del club. En Mi club (Clubs y mesas) quedó solo la gestión: agregar, borrar y copiar el ID de la mesa.
+- **Jugar contra un invitado:** en Jugador 2 hay una opción "Invitado (sin cuenta)" con nombre libre. Al arrancar se crea un jugador invitado (`is_guest`, sin club ni dueño), el mismo mecanismo que usa la página del QR, así que si después entra con su celu puede reclamarlo. No hizo falta migración.
+- **Pendiente:** probarlo en producción (abrir una mesa, ver el QR, cerrarla y arrancar una partida contra un invitado).
+
 ## 7. Próximo paso concreto
 
 **Actualizado 2026-10-18:** Fases 1, 2 y 3 cerradas (lo que queda abierto de la 3, incluido el cobro, en 6.8). Siguiente: Fase 4, arrancando por el paso 1 de 6.9 (bucket privado y links firmados), que ya está en producción y probado. El paso 2 (links firmados por el servidor y descarga según plan) también está en producción y funciona. El paso 3 (publicar y despublicar) también está en producción y probado. El paso 4 (página de clip compartible, `/c/:id`, con vista previa para WhatsApp) también está en producción y probado (6.9). El paso 5 (feed de clips públicos y Reportar) también está en producción y probado (6.9). **Fase 4 cerrada (2026-10-18).** Rediseño visual hecho, en producción y probado (6.10). "Escanear QR" dentro de la app y los íconos para instalarla (6.7) también en producción y probados. En iPhone la cámara del celu sigue abriendo Safari: se escanea desde la app; la app nativa queda para más adelante. Siguiente: la Fase 5.

@@ -78,9 +78,5 @@
   color: var(--danger);
 }
 
-.table-qr { display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; }
-.table-qr svg { padding: 10px; background: #fff; border-radius: 10px; }
-.table-qr a { font-size: 0.75rem; word-break: break-all; color: var(--muted); }
-
 .log-match-form input[type="number"] { flex: 0 1 100px; }
 .log-match-form select { flex: 1 1 140px; width: auto; }

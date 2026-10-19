@@ -12,11 +12,11 @@ export async function getClubs() {
   return data ?? [];
 }
 
-// Trae todas las mesas con el nombre de su club (para elegir mesa al crear partida)
+// Trae todas las mesas con el nombre de su club (para elegir, abrir o cerrar mesa al crear partida)
 export async function getTables() {
   const { data, error } = await supabase
     .from("tables")
-    .select("id, label, club_id, club:clubs(id, name)")
+    .select("id, label, club_id, availability, qr_token, club:clubs(id, name)")
     .order("label", { ascending: true });
 
   if (error) throw error;

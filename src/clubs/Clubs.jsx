@@ -1,13 +1,10 @@
 import { useEffect, useState } from "react";
-import QRCode from "react-qr-code";
-import { getClubs, createClub, deleteClub, createTable, deleteTable, setTableAvailability } from "../services/ClubService";
+import { getClubs, createClub, deleteClub, createTable, deleteTable } from "../services/ClubService";
 import { addClubMemberByPhone, createMyClub, logMatchResult } from "../services/AccountService";
 import { useAuth } from "../context/AuthContext";
 import { usePlayers } from "../context/PlayerContext";
 import { useMatches } from "../context/MatchContext";
 import "./Clubs.css";
-
-const AVAILABILITY_LABEL = { closed: "cerrada", waiting: "abierta", in_match: "en partida" };
 
 // Partido ya jugado, sin mesa ni cámara (solo jugadores del club)
 function LogMatchForm({ club, players, onSubmit }) {
@@ -60,6 +57,7 @@ function LogMatchForm({ club, players, onSubmit }) {
 // Clubs y mesas (Fase 1). Desde la Fase 3: el admin ve y maneja todo; una
 // cuenta de club ve solo sus clubs y maneja sus mesas. Cualquier cuenta real
 // crea su propio club y queda como dueña; el dueño da acceso a otros.
+// Abrir/cerrar una mesa y su QR se manejan desde Nueva partida.
 export default function Clubs() {
   const { account, refreshAccount } = useAuth();
   const { players } = usePlayers();
@@ -71,7 +69,6 @@ export default function Clubs() {
   const [ownerPhones, setOwnerPhones] = useState({}); // club_id -> celu o mail de quien recibe acceso
   const [memberRoles, setMemberRoles] = useState({}); // club_id -> 'owner' | 'staff'
   const [notice, setNotice] = useState(null);
-  const [qrTableId, setQrTableId] = useState(null);
   const [clubs, setClubs]       = useState([]);
   const [loading, setLoading]   = useState(true);
   const [error, setError]       = useState(null);
@@ -174,12 +171,6 @@ export default function Clubs() {
     }
   }
 
-  function handleToggleOpen(table) {
-    const next = table.availability === "closed" ? "waiting" : "closed";
-    if (table.availability === "in_match" && !window.confirm(`Hay una partida en curso en "${table.label}". ¿Cerrar la mesa igual?`)) return;
-    run(() => setTableAvailability(table.id, next));
-  }
-
   if (loading || !account) return <p className="loading">Cargando clubs…</p>;
   if (account.is_anonymous) {
     return <p className="page empty">Para crear o manejar un club, entrá con tu cuenta.</p>;
@@ -247,12 +238,6 @@ export default function Clubs() {
                 <li key={t.id} className="table-row">
                   <span>{t.label}</span>
                   <span className={`table-status table-${t.status}`}>{t.status}</span>
-                  <button className="table-copy" onClick={() => handleToggleOpen(t)} title="Abierta: cualquiera escanea el QR y arranca una partida">
-                    {AVAILABILITY_LABEL[t.availability] ?? t.availability} · {t.availability === "closed" ? "abrir" : "cerrar"}
-                  </button>
-                  <button className="table-copy" onClick={() => setQrTableId(qrTableId === t.id ? null : t.id)}>
-                    QR
-                  </button>
                   <button className="table-copy" onClick={() => handleCopyId(t)} title="Copiar ID para el TABLE_ID del agente">
                     {copiedId === t.id ? "✓ copiado" : "copiar ID"}
                   </button>
@@ -261,17 +246,6 @@ export default function Clubs() {
               ))}
               {club.tables.length === 0 && <li className="clubs-empty">Sin mesas todavía.</li>}
             </ul>
-
-            {club.tables.filter((t) => t.id === qrTableId).map((t) => {
-              const url = `${window.location.origin}/mesa/${t.qr_token}`;
-              return (
-                <div key={t.id} className="table-qr">
-                  <QRCode value={url} size={160} bgColor="#ffffff" fgColor="#000000" />
-                  <a href={url} target="_blank" rel="noreferrer">{url}</a>
-                  <span className="clubs-empty">Imprimilo y pegalo en {t.label}. El QR no cambia.</span>
-                </div>
-              );
-            })}
 
             <form className="table-form" onSubmit={(e) => handleCreateTable(e, club)}>
               <input
