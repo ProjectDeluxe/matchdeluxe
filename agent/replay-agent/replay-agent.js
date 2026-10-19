@@ -50,7 +50,7 @@ const TV_SCENE = "MatchDeluxe Tele";
 const REPLAY_INPUT = "MatchDeluxe Repetición";
 const REPLAY_LABEL = "MatchDeluxe Cartel repetición";
 const LIVE_LABEL = "MatchDeluxe Cartel en vivo";
-const REPLAYS_DIR = path.join(os.tmpdir(), "poolappdeluxe-replays");
+const REPLAYS_DIR = path.join(os.tmpdir(), "matchdeluxe-replays");
 // Modo navegador: abrir la pantalla de la tele al arrancar (solo Windows). ABRIR_TELE=0 lo desactiva.
 const OPEN_DISPLAY = (process.env.ABRIR_TELE || "1").trim() !== "0";
 // Posición de la ventana de la tele, por ejemplo "1920,0" si la tele es la segunda pantalla.
@@ -59,7 +59,7 @@ const DISPLAY_POSITION = (process.env.TELE_POSICION || "").trim();
 const PUBLIC_DIR = path.join(__dirname, "public");
 const OUTPUT_FILE = path.join(PUBLIC_DIR, "replay-latest.mp4");
 // Los clips a subir se arman en una carpeta temporal y se borran después de subirlos.
-const CLIPS_TMP_DIR = path.join(os.tmpdir(), "poolappdeluxe-clips");
+const CLIPS_TMP_DIR = path.join(os.tmpdir(), "matchdeluxe-clips");
 const CLIPS_BUCKET = "clips";
 
 if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {

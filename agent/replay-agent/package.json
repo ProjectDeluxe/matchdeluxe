@@ -1,5 +1,5 @@
 {
-  "name": "poolappdeluxe-replay-agent",
+  "name": "matchdeluxe-replay-agent",
   "version": "1.0.0",
   "private": true,
   "description": "Agente local: escucha pedidos de repetición desde el celu (via Supabase Realtime) y le pide a OBS que guarde el Replay Buffer, para mostrarla en la tele de la mesa.",

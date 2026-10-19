@@ -87,7 +87,7 @@ export function AuthProvider({ children }) {
 
   // Solo para desarrollo local — no aparece en producción
   function devLogin() {
-    setUser({ id: "dev-user", phone: "+54dev", email: "dev@poolappdeluxe.local", isDev: true });
+    setUser({ id: "dev-user", phone: "+54dev", email: "dev@matchdeluxe.local", isDev: true });
   }
 
   return (
