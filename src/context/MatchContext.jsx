@@ -14,8 +14,8 @@ export function MatchProvider({ children }) {
     setLoading(false);
   }
 
-  async function startMatch(player1_id, player2_id, table = null) {
-    const match = await createMatch(player1_id, player2_id, table);
+  async function startMatch(player1_id, player2_id, table = null, discipline = "pool") {
+    const match = await createMatch(player1_id, player2_id, table, discipline);
     await loadMatches();
     return match;
   }

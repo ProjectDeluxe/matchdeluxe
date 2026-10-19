@@ -516,7 +516,9 @@ Fase 3 cerrada: planes y límites (6.3), modelo de cuentas (6.4), vivo y repetic
 - **Arrancar desde el celu va directo al control:** antes, al crear una partida desde el celu se abría la pantalla con el QR para controlarla desde un celu, y para llegar a los botones de repetición había que salir y volver a entrar. Ahora desde un celu (pantalla táctil) va al control; desde la PC sigue mostrando el QR.
 - **Punto rojo que parpadea** en las partidas en curso de las listas (Partida e historial).
 - **Eliminar clips:** botón "Eliminar" en el clip, solo para la gente del club de la mesa y el admin (decidido con Agus: los jugadores, incluido quien lo guardó, solo publican o despublican). Lo hace `api/clips/delete.js` con la service key: borra el video y la miniatura del bucket y después la fila (los reportes se van en cascada). `api/clips/sign.js` devuelve `can_delete` para mostrar el botón. No hizo falta migración.
-- **Pendiente:** probar eliminar un clip desde una cuenta del club y ver que un jugador no ve el botón.
+- ~~Pendiente: probar eliminar un clip~~ → probado por Agus el 2026-10-19.
+- **Disciplina por mesa (pool o ping pong):** una misma mesa física (misma cámara y misma PC con su `TABLE_ID`) puede usarse para pool o ping pong, sin crear una mesa por disciplina. La mesa guarda la disciplina que tiene ahora (`tables.discipline`) y la gente del club la cambia en Nueva partida, antes de arrancar. Cada partida guarda con qué disciplina se jugó (`matches.discipline`): en una mesa la copia un trigger desde la mesa (así también la que se arranca por QR, sin tocar `start_match_at_table`); sin mesa la elige quien la crea. El agente no cambia. El marcador sigue igual (puntos enteros); no se generaliza (sección 8). La disciplina se ve en la partida y, si es ping pong, en las listas. Migración `2026-10-19-disciplina.sql`.
+- **Pendiente:** correr la migración en Supabase antes de desplegar; borrar la mesa "Ping Pong" de The House si ya no hace falta; probar una partida de ping pong en la mesa y otra por QR.
 
 ## 7. Próximo paso concreto
 

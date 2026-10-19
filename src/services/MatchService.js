@@ -1,5 +1,8 @@
 import { supabase } from "../supabaseClient";
 
+// Disciplinas (ROADMAP 6.13). El marcador es el mismo para todas.
+export const DISCIPLINES = { pool: "Pool", ping_pong: "Ping pong" };
+
 // Trae todas las partidas (para historial)
 export async function getMatches() {
   const { data, error } = await supabase
@@ -28,8 +31,9 @@ export async function getMatchById(id) {
   return data;
 }
 
-// Crea una partida nueva (mesa opcional: sin mesa queda como partida suelta)
-export async function createMatch(player1_id, player2_id, table = null) {
+// Crea una partida nueva (mesa opcional: sin mesa queda como partida suelta).
+// En una mesa, la base usa la disciplina de la mesa y no la que viene acá.
+export async function createMatch(player1_id, player2_id, table = null, discipline = "pool") {
   const { data, error } = await supabase
     .from("matches")
     .insert({
@@ -37,6 +41,7 @@ export async function createMatch(player1_id, player2_id, table = null) {
       player2_id,
       club_id: table?.club_id ?? null,
       table_id: table?.id ?? null,
+      discipline,
       score1: 0,
       score2: 0,
       status: "active",

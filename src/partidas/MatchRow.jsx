@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { DISCIPLINES } from "../services/MatchService";
 
 function shortDate(iso) {
   if (!iso) return "";
@@ -31,7 +32,12 @@ export default function MatchRow({ match: m, nameOf, me = null }) {
           <span className="list-row-title">
             {mine ? `vs ${nameOf(rival)}` : `${nameOf(m.player1_id)} vs ${nameOf(m.player2_id)}`}
           </span>
-          {!finished && <span className="list-row-sub">{!mine && <span className="live-dot" />} En curso</span>}
+          {(!finished || m.discipline === "ping_pong") && (
+            <span className="list-row-sub">
+              {!finished && !mine && <span className="live-dot" />}{" "}
+              {[m.discipline === "ping_pong" && DISCIPLINES.ping_pong, !finished && "En curso"].filter(Boolean).join(" · ")}
+            </span>
+          )}
         </span>
         <span className="score">{a}–{b}</span>
         <span className="list-row-sub match-date">{shortDate(m.started_at)}</span>

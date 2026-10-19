@@ -16,7 +16,7 @@ export async function getClubs() {
 export async function getTables() {
   const { data, error } = await supabase
     .from("tables")
-    .select("id, label, club_id, availability, qr_token, club:clubs(id, name)")
+    .select("id, label, club_id, availability, qr_token, discipline, club:clubs(id, name)")
     .order("label", { ascending: true });
 
   if (error) throw error;
@@ -54,6 +54,13 @@ export async function createTable(club_id, label) {
 // availability: 'closed' | 'waiting' (la pasa a 'in_match' la base al arrancar)
 export async function setTableAvailability(id, availability) {
   const { error } = await supabase.from("tables").update({ availability }).eq("id", id);
+  if (error) throw error;
+}
+
+// Disciplina que tiene ahora la mesa: la toman las partidas que se arrancan en ella
+// discipline: 'pool' | 'ping_pong'
+export async function setTableDiscipline(id, discipline) {
+  const { error } = await supabase.from("tables").update({ discipline }).eq("id", id);
   if (error) throw error;
 }
 

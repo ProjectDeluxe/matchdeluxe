@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import QRCode from "react-qr-code";
 import { usePlayers } from "../context/PlayerContext";
 import { useMatches } from "../context/MatchContext";
-import { getTables, setTableAvailability } from "../services/ClubService";
+import { getTables, setTableAvailability, setTableDiscipline } from "../services/ClubService";
+import { DISCIPLINES } from "../services/MatchService";
 import { createGuestPlayer } from "../services/AccountService";
 import { useAuth } from "../context/AuthContext";
 import { Link, useNavigate } from "react-router-dom";
@@ -25,10 +26,13 @@ export default function NuevaPartida() {
   const [p2, setP2] = useState("");
   const [guestName, setGuestName] = useState("");
   const [tableId, setTableId] = useState(""); // "" = partida suelta, sin mesa
+  const [looseDiscipline, setLooseDiscipline] = useState("pool"); // la de la partida suelta
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
   const navigate = useNavigate();
   const table = tables.find((t) => t.id === tableId) ?? null;
+  // En una mesa manda la disciplina de la mesa (también para quien entra por el QR)
+  const discipline = table ? table.discipline ?? "pool" : looseDiscipline;
 
   function loadTables() {
     return getTables().then(setTables).catch(() => setTables([]));
@@ -50,6 +54,17 @@ export default function NuevaPartida() {
     }
   }
 
+  async function handleDiscipline(next) {
+    if (!table) return setLooseDiscipline(next);
+    try {
+      await setTableDiscipline(table.id, next);
+      await loadTables();
+      setError(null);
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
   async function handleStart(e) {
     e.preventDefault();
     setBusy(true);
@@ -60,7 +75,7 @@ export default function NuevaPartida() {
         rivalId = (await createGuestPlayer(guestName.trim())).id;
         reloadPlayers();
       }
-      const match = await startMatch(p1, rivalId, table);
+      const match = await startMatch(p1, rivalId, table, discipline);
       // Desde el celu vas directo al control. Desde la PC, a la pantalla con el
       // QR para manejar la partida desde un celu.
       const mobile = window.matchMedia("(pointer: coarse)").matches;
@@ -114,6 +129,13 @@ export default function NuevaPartida() {
             </select>
           </label>
         )}
+
+        <label className="field">
+          <span>Disciplina</span>
+          <select value={discipline} onChange={(e) => handleDiscipline(e.target.value)}>
+            {Object.entries(DISCIPLINES).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+          </select>
+        </label>
 
         {table && (
           <div className="qr-section">
