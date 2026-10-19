@@ -369,6 +369,12 @@ Esto depende de cosas que todavía no existen (login/panel de club, Fase 1 del m
 - Cartelería y consentimiento legal para clubes reales (se filma a la gente).
 - Vista de todas las mesas desde una PC maestra.
 - Edición automática con IA del partido completo.
+- **Partido completo y editor de mejores momentos (propuesta, Agus 2026-10-19, para después de la Fase 5):**
+  - El agente le pide a OBS que grabe desde que se abre la partida hasta que se cierra. El crudo en buena calidad (aprox. 1,2 GB por hora a 720p30 con codificador de hardware) queda en el disco de la PC de la mesa y no se sube.
+  - Se sube una versión liviana en 480p (aprox. 0,3 GB por hora) para mirarla en la app, y se borra a las 48 h. Referencia: Supabase Pro trae unos 100 GB de almacenamiento y 250 GB de descarga (precios a confirmar); lo que más pesa es la descarga cuando la gente mira.
+  - En la app se mira el partido y se marcan inicio y fin de cada momento. El agente corta esos tramos del crudo sin recodificar y sube solo los clips.
+  - Al cerrar la partida, el agente detecta picos de sonido con ffmpeg y los propone como marcas que se pueden mover o borrar. La IA mirando el video queda descartada por ahora (cara y poco precisa con jugadas rápidas).
+  - El Replay Buffer se mantiene para la repetición instantánea en la tele.
 - **Tele de la mesa abierta con QR (pedido de Agus, 2026-10-17):** al abrir una mesa, el agente pone en la tele el vivo de la mesa en grande con el QR de la mesa, para entrar con cuenta o como invitado, y al arrancar la partida pasa a la pantalla de partida de siempre. Va junto con el HUD de la partida (marcador y QR) integrado en la transmisión de OBS, que se habló en otra conversación y todavía no está en este documento.
 - **Rediseño visual de toda la app (pedido de Agus, 2026-10-17) — hecho, ver 6.10:** hoy se ve mal en el celu y en la PC. Por ejemplo, la pantalla de la mesa por QR (nueva partida) se sale del ancho del celu: se cortan el nombre, el selector de rival y el campo del celu. Hay que revisar el CSS completo, mobile primero. Va apenas se cierre la Fase 4 (Agus, 2026-10-18).
 - `public/manifest.json` pide `/icon-192.png`, que no está en `public/` (el navegador avisa del error en la consola). Va con el rediseño. **Hecho (2026-10-18):** se agregaron `icon-192.png` e `icon-512.png` (cuadrado azul con una P blanca), junto con "Escanear QR"; en producción y probado.
@@ -494,6 +500,13 @@ Fase 3 cerrada: planes y límites (6.3), modelo de cuentas (6.4), vivo y repetic
   - Para dar acceso a un club ahora se acepta el celu o el mail (migración `2026-10-18-login-google.sql`, misma función `add_club_member_by_phone`).
   - Un invitado de mesa que entra con Google pasa a su cuenta de Google; la sesión de invitado no se une (con celu sí se une).
 - **Pendiente:** activar el proveedor Google en Supabase (credencial OAuth de Google Cloud) y agregar la URL de la app en Auth → URL Configuration; correr la migración; SMS reales con Twilio Verify.
+
+### 6.12 Primera prueba real de clips en la mesa (2026-10-19)
+
+- **Qué se encontró:** en la PC de la mesa los clips salían a ~1 fps, el primero tardó todo el partido en subirse y una repetición tardó 103 s en guardarse. Las estadísticas de OBS marcaban un 70 % de fotogramas omitidos por retraso en la codificación: OBS grababa a 60 fps con un codificador que no daba abasto, y el agente además recodificaba cada clip con x264 en la CPU al mismo tiempo, sin fila (varios ffmpeg a la vez).
+- **Qué se hizo en el agente:** los clips se cortan copiando el video de OBS sin recodificar (si pasan de 45 MB se recodifican a 720p como antes), se procesan de a uno en fila sin frenar la repetición, y ffmpeg corre con prioridad baja.
+- **Configuración de OBS en la mesa:** codificador de hardware, 1280x720 a 30 fps, intervalo de fotogramas clave 1 s, Replay Buffer en 65 s (README del agente actualizado).
+- **Pendiente:** probar en la mesa con la configuración nueva de OBS y el agente actualizado; confirmar fotogramas omitidos cerca de 0 % y el peso de un clip de 60 s.
 
 ## 7. Próximo paso concreto
 

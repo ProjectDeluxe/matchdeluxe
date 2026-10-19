@@ -380,9 +380,16 @@ function openDisplay(url) {
   console.log("📺 Abrí la pantalla de la tele (para salir de la pantalla completa: Alt+F4).");
 }
 
+// ffmpeg corre con prioridad baja: si compite con OBS por la CPU, OBS empieza a
+// descartar fotogramas y los clips salen entrecortados.
 function runFfmpeg(args) {
   return new Promise((resolve, reject) => {
-    execFile("ffmpeg", args, (err) => (err ? reject(err) : resolve()));
+    const child = execFile("ffmpeg", args, (err) => (err ? reject(err) : resolve()));
+    try {
+      os.setPriority(child.pid, os.constants.priority.PRIORITY_LOW);
+    } catch {
+      // Si no se puede bajar la prioridad, sigue igual.
+    }
   });
 }
 
@@ -418,12 +425,27 @@ function trimLastSeconds(inputPath, seconds, outputPath) {
   });
 }
 
-// Recorte para un clip que se guarda al perfil: más liviano que la repetición
-// de la tele (720p, un poco más de compresión) porque se sube a Storage y el
-// plan de Supabase limita el tamaño por archivo (50 MB por defecto).
+// Recorte para un clip que se guarda al perfil. Primero se copia el video tal cual
+// sale de OBS (sin recodificar): tarda menos de un segundo y casi no usa CPU, así
+// OBS no pierde fotogramas mientras se procesa. Para que el corte arranque limpio,
+// OBS tiene que grabar con intervalo de fotogramas clave de 1s. Si la copia pesa
+// más de lo que acepta Storage (50 MB por defecto), se recodifica a 720p.
 // "+faststart" hace que el navegador pueda empezar a reproducirlo sin bajarlo entero.
-function trimClipForUpload(inputPath, seconds, outputPath) {
-  return runFfmpeg([
+const CLIP_MAX_MB = 45;
+
+async function trimClipForUpload(inputPath, seconds, outputPath) {
+  await runFfmpeg([
+    "-y",
+    "-sseof", `-${seconds}`,
+    "-i", inputPath,
+    "-c", "copy",
+    "-movflags", "+faststart",
+    outputPath,
+  ]);
+  if (fs.statSync(outputPath).size / 1024 / 1024 <= CLIP_MAX_MB) return;
+
+  console.log("⚠️  El clip pesa demasiado copiado tal cual, lo recodifico a 720p...");
+  await runFfmpeg([
     "-y",
     "-sseof", `-${seconds}`,
     "-i", inputPath,
@@ -524,6 +546,8 @@ async function uploadClip(savedPath, seconds, clipId) {
   }
 }
 
+let clipQueue = Promise.resolve();
+
 obs.on("ReplayBufferSaved", async (data) => {
   const savedPath = data.savedReplayPath;
   const job = pending.shift() || { kind: "replay", seconds: 20 };
@@ -531,7 +555,8 @@ obs.on("ReplayBufferSaved", async (data) => {
   console.log(`🎬 OBS guardó el replay buffer en: ${savedPath} — ${job.kind === "clip" ? "clip" : "repetición"} de ${job.seconds}s${took}`);
 
   if (job.kind === "clip") {
-    await uploadClip(savedPath, job.seconds, job.clipId);
+    // Los clips se procesan de a uno, en fila. La repetición no espera a la fila.
+    clipQueue = clipQueue.then(() => uploadClip(savedPath, job.seconds, job.clipId));
   } else if (TV_MODE === "obs") {
     await showReplayInObs(savedPath, job.seconds);
   } else {

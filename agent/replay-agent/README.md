@@ -5,7 +5,7 @@ Esto corre en la PC que tiene la cámara y OBS conectados a la mesa de pool — 
 ## 1. Preparar OBS
 
 1. Abrí OBS con la cámara de la mesa ya agregada como fuente en una escena.
-2. **Activar el Replay Buffer:** Configuración → Salida → pestaña "Buffer de repetición". Activalo, y poné el "Tiempo máximo de repetición" en **60 segundos** (así cubre los tres botones — 20s/40s/1min — recortando después). Aplicá.
+2. **Activar el Replay Buffer:** Configuración → Salida → pestaña "Buffer de repetición". Activalo, y poné el "Tiempo máximo de repetición" en **65 segundos** (así cubre los tres botones — 20s/40s/1min — con margen). En la pestaña "Grabación" usá el codificador de hardware (QuickSync, NVENC o AMF), salida en 1280x720 a 30 fps e **intervalo de fotogramas clave en 1 s**: el agente corta los clips copiando el video sin recodificar y necesita un fotograma clave por segundo para que el corte arranque limpio. Aplicá.
 3. No hace falta iniciar a mano el buffer: el agente lo prende solo al conectarse a OBS. Tampoco hace falta armar nada para la tele: el agente crea en OBS la escena "MatchDeluxe Tele" (ver paso 4). Dejá en el Programa la escena con la cámara de la mesa.
 4. **Activar el WebSocket:** Herramientas → "WebSocket Server Settings" (o "Configuración del servidor WebSocket"). Activá el servidor. Anotá el puerto (por defecto `4455`) y, si le pusiste contraseña, anotala también — van al `.env`.
 
