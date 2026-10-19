@@ -484,6 +484,7 @@ Fase 3 cerrada: planes y límites (6.3), modelo de cuentas (6.4), vivo y repetic
   2. Abrir un club desde Buscar.
   3. Cerrar sesión desde Perfil y volver a entrar.
 - **Escanear QR dentro de la app (2026-10-18), en producción y probado (`828f5d2`):** botón "Escanear QR" en Partida (`/partida/escanear`), y manifest con `id`, `scope` e íconos para que Android la instale como app. Detalle en 6.7.
+- **Ícono nuevo (2026-10-19):** M blanca redondeada con un punto azul sobre fondo oscuro (`public/icon-192.png`, `icon-512.png`, `icon.svg`); también reemplaza el favicon de Vite. Pendiente: reinstalar la app en los celus para verlo.
 
 ### 6.11 Arranque real: base en cero y login con Google (2026-10-18)
 
