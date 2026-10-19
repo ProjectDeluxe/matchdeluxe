@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { getClipDownloadUrl, reportClip, setClipPublic } from "../services/ClipService";
-import { DownloadIcon, FlagIcon, GlobeIcon, ShareIcon } from "../components/Icons.jsx";
+import { deleteClip, getClipDownloadUrl, reportClip, setClipPublic } from "../services/ClipService";
+import { DownloadIcon, FlagIcon, GlobeIcon, ShareIcon, TrashIcon } from "../components/Icons.jsx";
 import "./Clips.css";
 
 function timeAgo(iso) {
@@ -83,6 +83,27 @@ function PublishButton({ clip, onChange, onError }) {
       disabled={loading}
     />
   );
+}
+
+// Eliminar (solo el club o el admin; lo decide api/clips/delete.js). Borra el
+// clip para todos, también el video.
+function DeleteButton({ clip, onChange, onError }) {
+  const [loading, setLoading] = useState(false);
+  if (!clip.can_delete) return null;
+
+  async function remove() {
+    if (!window.confirm("¿Eliminar este clip? Se borra para los dos jugadores y no se puede recuperar.")) return;
+    setLoading(true);
+    onError(null);
+    try {
+      onChange(await deleteClip(clip.id));
+    } catch (e) {
+      onError(e.message);
+      setLoading(false);
+    }
+  }
+
+  return <Action icon={<TrashIcon />} label={loading ? "Eliminando…" : "Eliminar"} onClick={remove} disabled={loading} />;
 }
 
 // Compartir el link de un clip público (Fase 4, paso 4): el menú de compartir
@@ -211,6 +232,7 @@ function ClipPost({ clip, canDownload, canReport, isMine, onChange }) {
             <Action icon={<DownloadIcon />} label="Descargar" to="/plan" />
           ))}
         <PublishButton clip={clip} onChange={onChange} onError={setActionError} />
+        <DeleteButton clip={clip} onChange={onChange} onError={setActionError} />
         {canReport && clip.is_public && !isMine && <ReportButton clipId={clip.id} />}
       </div>
 
@@ -239,9 +261,11 @@ export default function ClipList({
   isMine = () => false,
   emptyText = "Todavía no hay clips guardados.",
 }) {
-  // Cambios de publicar/despublicar hechos en esta pantalla, por id de clip
+  // Cambios de publicar/despublicar/eliminar hechos en esta pantalla, por id de clip
   const [changes, setChanges] = useState({});
-  const clips = initialClips.map((c) => (changes[c.id] ? { ...c, ...changes[c.id] } : c));
+  const clips = initialClips
+    .map((c) => (changes[c.id] ? { ...c, ...changes[c.id] } : c))
+    .filter((c) => !c.deleted);
 
   if (clips.length === 0) return <p className="empty">{emptyText}</p>;
 

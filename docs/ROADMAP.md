@@ -515,6 +515,8 @@ Fase 3 cerrada: planes y límites (6.3), modelo de cuentas (6.4), vivo y repetic
 - ~~Pendiente: probarlo en producción~~ → probado por Agus el 2026-10-19.
 - **Arrancar desde el celu va directo al control:** antes, al crear una partida desde el celu se abría la pantalla con el QR para controlarla desde un celu, y para llegar a los botones de repetición había que salir y volver a entrar. Ahora desde un celu (pantalla táctil) va al control; desde la PC sigue mostrando el QR.
 - **Punto rojo que parpadea** en las partidas en curso de las listas (Partida e historial).
+- **Eliminar clips:** botón "Eliminar" en el clip, solo para la gente del club de la mesa y el admin (decidido con Agus: los jugadores, incluido quien lo guardó, solo publican o despublican). Lo hace `api/clips/delete.js` con la service key: borra el video y la miniatura del bucket y después la fila (los reportes se van en cascada). `api/clips/sign.js` devuelve `can_delete` para mostrar el botón. No hizo falta migración.
+- **Pendiente:** probar eliminar un clip desde una cuenta del club y ver que un jugador no ve el botón.
 
 ## 7. Próximo paso concreto
 

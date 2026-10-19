@@ -4,7 +4,7 @@
 // puede ver cada clip y, para descargar, el plan del usuario.
 //
 // POST /api/clips/sign  (Authorization: Bearer <access token de Supabase>)
-//   { clipIds: [...] }                    → { clips: { <id>: { video_url, thumbnail_url, can_publish, can_unpublish } } }
+//   { clipIds: [...] }                    → { clips: { <id>: { video_url, thumbnail_url, can_publish, can_unpublish, can_delete } } }
 //                                           (solo los clips que el usuario puede ver; los
 //                                           links son null si el clip no está listo o venció)
 //   { clipIds: [<id>], download: true }   → { download_url }
@@ -14,7 +14,8 @@
 // admin; un clip público, cualquiera con sesión (paso 3). Descargar además exige
 // una cuenta real (no invitado) con un plan con can_download.
 // can_publish / can_unpublish le dicen a la app qué botón mostrar (paso 3);
-// la decisión de verdad la toma api/clips/publish.js.
+// la decisión de verdad la toma api/clips/publish.js. can_delete, el botón
+// Eliminar (api/clips/delete.js).
 //
 // Ojo: `npm run dev` (Vite) no sirve las funciones de api/; para probar
 // en local hace falta `vercel dev`, o probar en producción.
@@ -24,6 +25,7 @@ import {
   HttpError,
   canPublish,
   canUnpublish,
+  canDelete,
   canView,
   planOf,
   readBody,
@@ -66,6 +68,7 @@ export default withErrors(async function sign(req, res) {
         thumb: playable ? thumbPath(c) : null,
         can_publish: playable && !c.is_public && !c.publish_blocked_by && !!plan?.can_publish && canPublish(viewer, c),
         can_unpublish: !!c.is_public && canUnpublish(viewer, c),
+        can_delete: canDelete(viewer, c),
       };
     });
 
@@ -94,6 +97,7 @@ export default withErrors(async function sign(req, res) {
       thumbnail_url: signed.get(r.thumb) ?? null,
       can_publish: r.can_publish,
       can_unpublish: r.can_unpublish,
+      can_delete: r.can_delete,
     };
   }
   return res.status(200).json({ clips: result });

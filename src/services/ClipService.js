@@ -58,6 +58,11 @@ export function setClipPublic(clipId, publish) {
   return callApi("/api/clips/publish", { clipId, publish });
 }
 
+// Eliminar un clip con su video (solo el club o el admin). Devuelve { deleted }.
+export function deleteClip(clipId) {
+  return callApi("/api/clips/delete", { clipId });
+}
+
 // Feed de clips públicos (Fase 4, paso 5), de a 20. Devuelve { clips, next_cursor, clubs }.
 export function getFeed({ cursor = null, clubId = null } = {}) {
   return callApi("/api/clips/feed", { cursor, clubId });

@@ -47,6 +47,10 @@ export const GlobeIcon = () => (
   <Svg size={20}><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3c2.5 2.7 2.5 15.3 0 18M12 3c-2.5 2.7-2.5 15.3 0 18" /></Svg>
 );
 
+export const TrashIcon = () => (
+  <Svg size={20}><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" /></Svg>
+);
+
 export const FlagIcon = () => (
   <Svg size={20}><path d="M5 21V4M5 4h11l-2 4 2 4H5" /></Svg>
 );

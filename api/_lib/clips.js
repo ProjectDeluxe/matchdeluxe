@@ -132,6 +132,12 @@ export function canUnpublish(viewer, clip) {
   );
 }
 
+// Eliminar: solo la gente del club de la mesa y el admin. Los jugadores lo
+// publican o despublican, pero no lo borran.
+export function canDelete(viewer, clip) {
+  return viewer.isAdmin || isClubStaffOf(viewer, clip);
+}
+
 // Ruta dentro del bucket a partir de la URL pública que guarda el agente
 // (lo que viene después de /object/public/clips/).
 export function pathFromPublicUrl(url) {
