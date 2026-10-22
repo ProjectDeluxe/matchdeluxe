@@ -245,6 +245,8 @@ button:disabled { cursor: not-allowed; opacity: 0.45; }
 .list-row-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .list-row-title { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .list-row-sub { font-size: 0.8rem; color: var(--muted); }
+.row-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.club-membership { align-items: flex-start; }
 a.list-row,
 button.list-row {
   color: inherit;

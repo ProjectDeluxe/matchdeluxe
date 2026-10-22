@@ -73,3 +73,59 @@ export async function deleteTable(id) {
   const { error } = await supabase.from("tables").delete().eq("id", id);
   if (error) throw error;
 }
+
+// Socios del club (ROADMAP 6.14). Ser socio pide permiso de los dos lados:
+// el jugador pide y el club aprueba, o el club invita y el jugador acepta.
+// Cada fila: { club_id, player_id, status: 'pending' | 'active', requested_by: 'player' | 'club' }
+const MEMBERSHIP_FIELDS = "club_id, player_id, status, requested_by, created_at";
+
+// Socios y pendientes de un club (los pendientes solo los ve el club o el propio jugador)
+export async function getClubPlayers(clubId) {
+  const { data, error } = await supabase
+    .from("club_players")
+    .select(`${MEMBERSHIP_FIELDS}, player:players(id, name, avatar_url, user_id)`)
+    .eq("club_id", clubId)
+    .order("created_at", { ascending: true });
+
+  if (error) throw error;
+  return data ?? [];
+}
+
+// Clubs de un jugador, con lo pendiente que vos podés ver
+export async function getPlayerMemberships(playerId) {
+  const { data, error } = await supabase
+    .from("club_players")
+    .select(`${MEMBERSHIP_FIELDS}, club:clubs(id, name)`)
+    .eq("player_id", playerId)
+    .order("created_at", { ascending: true });
+
+  if (error) throw error;
+  return data ?? [];
+}
+
+// El jugador logueado pide sumarse (si el club ya lo había invitado, queda adentro)
+export async function requestJoinClub(clubId) {
+  const { data, error } = await supabase.rpc("request_join_club", { cid: clubId });
+  if (error) throw error;
+  return data;
+}
+
+// El club invita a un jugador con cuenta (si ya lo había pedido, queda adentro)
+export async function inviteToClub(clubId, playerId) {
+  const { data, error } = await supabase.rpc("invite_to_club", { cid: clubId, pid: playerId });
+  if (error) throw error;
+  return data;
+}
+
+// Acepta el lado que no arrancó: el jugador su invitación, el club una solicitud
+export async function acceptClubMembership(clubId, playerId) {
+  const { data, error } = await supabase.rpc("accept_club_membership", { cid: clubId, pid: playerId });
+  if (error) throw error;
+  return data;
+}
+
+// Salir, sacar, rechazar o cancelar: borra la fila
+export async function removeClubMembership(clubId, playerId) {
+  const { error } = await supabase.rpc("remove_club_membership", { cid: clubId, pid: playerId });
+  if (error) throw error;
+}

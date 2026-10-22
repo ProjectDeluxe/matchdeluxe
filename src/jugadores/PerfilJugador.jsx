@@ -4,6 +4,7 @@ import { usePlayers } from "../context/PlayerContext";
 import { useMatches } from "../context/MatchContext";
 import { uploadAvatar } from "../services/PlayerService";
 import { getClipsByPlayer } from "../services/ClipService";
+import { getPlayerMemberships, inviteToClub, acceptClubMembership, removeClubMembership } from "../services/ClubService";
 import ClipList from "../clips/ClipList.jsx";
 import MatchRow from "../partidas/MatchRow.jsx";
 import Avatar from "../components/Avatar.jsx";
@@ -14,11 +15,77 @@ import "./PerfilJugador.css";
 
 const RECENT = 5;
 
+// En el perfil de otro jugador con cuenta, quien maneja un club lo invita a
+// ser socio (ROADMAP 6.14). Queda pendiente hasta que el jugador acepte; si
+// él ya había pedido sumarse, invitarlo es aprobarlo.
+function ClubInvites({ player }) {
+  const { account } = useAuth();
+  const myClubs = account?.clubs ?? [];
+  const [memberships, setMemberships] = useState(null);
+  const [error, setError] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const show = !!player.user_id && myClubs.length > 0;
+
+  useEffect(() => {
+    if (!show) return;
+    getPlayerMemberships(player.id).then(setMemberships).catch(() => setMemberships([]));
+  }, [player.id, show]);
+
+  if (!show) return null;
+  if (memberships === null) return <p className="loading">Cargando clubs…</p>;
+
+  async function run(action) {
+    setBusy(true);
+    setError(null);
+    try {
+      await action();
+      setMemberships(await getPlayerMemberships(player.id));
+    } catch (e) {
+      setError(e.message.replace(/^PLAN_LIMIT: /, ""));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section className="section">
+      <ul className="list">
+        {myClubs.map((club) => {
+          const m = memberships.find((x) => x.club_id === club.id);
+          return (
+            <li key={club.id} className="list-row">
+              <span className="list-row-main">
+                <span className="list-row-title">{club.name}</span>
+                <span className="list-row-sub">
+                  {!m && "No es socio"}
+                  {m?.status === "active" && "Es socio"}
+                  {m?.status === "pending" && m.requested_by === "club" && "Invitado, falta que acepte"}
+                  {m?.status === "pending" && m.requested_by === "player" && "Pidió sumarse"}
+                </span>
+              </span>
+              {!m && (
+                <button type="button" className="btn btn-small" disabled={busy} onClick={() => run(() => inviteToClub(club.id, player.id))}>Invitar</button>
+              )}
+              {m?.status === "pending" && m.requested_by === "club" && (
+                <button type="button" className="btn btn-secondary btn-small" disabled={busy} onClick={() => run(() => removeClubMembership(club.id, player.id))}>Cancelar</button>
+              )}
+              {m?.status === "pending" && m.requested_by === "player" && (
+                <button type="button" className="btn btn-small" disabled={busy} onClick={() => run(() => acceptClubMembership(club.id, player.id))}>Aprobar</button>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+      {error && <p className="error">{error}</p>}
+    </section>
+  );
+}
+
 // Perfil de un jugador: foto, estadísticas, últimas partidas y clips. Lo usan
 // /jugadores/:id y tu propio perfil (/perfil).
 // Debajo de las estadísticas, pestañas como en Instagram: clips, historial y,
-// opciones: las tuyas (options) en tu perfil; en el de otro, vacía por ahora
-// (más adelante: desafiarlo o arreglar un partido para un horario).
+// opciones: las tuyas (options) en tu perfil; en el de otro, invitarlo a tu
+// club si manejás uno (más adelante: desafiarlo o arreglar un partido).
 export function PlayerProfile({ playerId, own = false, options = null }) {
   const { players, editPlayer, removePlayer } = usePlayers();
   const { matches } = useMatches();
@@ -123,7 +190,12 @@ export function PlayerProfile({ playerId, own = false, options = null }) {
         ))}
       </div>
 
-      {tab === "options" && (options ?? <p className="empty">Pronto vas a poder desafiar a este jugador o arreglar un partido desde acá.</p>)}
+      {tab === "options" && (options ?? (
+        <>
+          <ClubInvites player={player} />
+          <p className="empty">Pronto vas a poder desafiar a este jugador o arreglar un partido desde acá.</p>
+        </>
+      ))}
 
       {tab === "history" && (
       <section className="section">

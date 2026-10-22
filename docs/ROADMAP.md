@@ -355,7 +355,7 @@ Esto depende de cosas que todavía no existen (login/panel de club, Fase 1 del m
 
 **Decisiones tomadas en el camino (cambiables):**
 - **Quién edita una partida:** Agus pidió escritura "solo para miembros del club de ese partido o admin, mismo criterio que `players`/`tables`". Tomado literal, el invitado que arranca una partida por el QR no podría mover su marcador, y una partida suelta solo la tocaría el admin. Por eso, igual que en `players` (donde edita el dueño y quien creó al invitado), también editan quien creó la partida y los dos jugadores si tienen cuenta. Borrar sí queda solo para el club y el admin.
-- **Jugadores "del club":** son los que tienen `players.club_id` de ese club. Un jugador que se registró solo (sin club) no entra en `log_match_result` hasta que exista lo de "socio de más de un club" (backlog, 6.7).
+- ~~**Jugadores "del club":** son los que tienen `players.club_id` de ese club. Un jugador que se registró solo (sin club) no entra en `log_match_result` hasta que exista lo de "socio de más de un club" (backlog, 6.7).~~ → desde 6.14 son los socios (`club_players`), y un jugador puede ser socio de varios clubs.
 - Si alguien escanea el QR de una partida suelta ajena con su propia cuenta, no puede mover el marcador salvo que sea uno de los dos jugadores.
 
 ~~**Pendiente:** prueba real: crear un club con una cuenta que no sea admin, darle acceso a otro celu como staff, cargar un partido jugado y arrancar una partida por QR como invitado para confirmar que el marcador se mueve.~~ → probado por Agus el 2026-10-17.
@@ -363,7 +363,7 @@ Esto depende de cosas que todavía no existen (login/panel de club, Fase 1 del m
 ### 6.7 Backlog (pedido de Agus, no bloquea)
 
 - Login con Google.
-- Que un jugador sea socio de más de un club (hoy `players.club_id` es uno solo).
+- ~~Que un jugador sea socio de más de un club (hoy `players.club_id` es uno solo).~~ → hecho en 6.14.
 - Modo "mesa sin cámara".
 - Reclamo de perfil con aprobación del club (hoy el reclamo por celu se confirma solo con el OTP y el "¿sos vos?").
 - Cartelería y consentimiento legal para clubes reales (se filma a la gente).
@@ -523,6 +523,21 @@ Fase 3 cerrada: planes y límites (6.3), modelo de cuentas (6.4), vivo y repetic
 - **Perfil con pestañas, como Instagram:** debajo de las estadísticas, una fila de íconos que cambia de sección: clips (la que se abre primero), historial y, en tu propio perfil, opciones (club, suscripción, cerrar sesión). En el perfil de otro jugador la pestaña de opciones queda vacía por ahora: más adelante, desafiarlo o arreglar un partido para un horario (idea de Agus).
 - **Pendiente (pedido de Agus):** mejorar los historiales para ver datos cruzados (por ejemplo, el cara a cara contra un rival).
 - **Borrar un jugador con partidas:** fallaba con `matches_player2_id_fkey` porque en producción las claves de jugadores en `matches` no tenían `ON DELETE SET NULL` (`supabase-schema.sql` sí lo dice, pero la tabla era anterior). Migración `2026-10-19-borrar-jugador.sql`: las rehace, así las partidas quedan y el jugador borrado sale como "Jugador". Pendiente: correrla y probar borrar el perfil de prueba.
+
+### 6.14 Socios del club con doble consentimiento (2026-10-22)
+
+- **Qué se encontró:** probando la app, la única forma de sumar a alguien con cuenta propia a un club era darle staff por mail, que es acceso para administrar el club. "Ser del club" era `players.club_id`, que solo tienen los jugadores que cargó el club.
+- **Decisión (Agus, 2026-10-22):** nadie se suma a un club sin que el club lo apruebe, y el club no suma a nadie sin que el usuario lo autorice, salvo los jugadores que carga el propio club para gente que no usa la app. Se eligieron las dos vías: solicitud del jugador e invitación del club.
+- **Qué se hizo:**
+  - Tabla `club_players` (club, jugador, `status` pendiente/activo, `requested_by` jugador/club). Nadie la escribe directo; todo pasa por funciones que validan quién puede: `request_join_club` (el jugador pide), `invite_to_club` (dueño o staff invita a un jugador con cuenta), `accept_club_membership` (acepta solo el lado que no arrancó: la invitación el jugador, la solicitud el club) y `remove_club_membership` (el jugador se va, rechaza o cancela; el club lo saca, rechaza o cancela). Si el jugador pide y el club ya lo había invitado, o al revés, queda adentro directo.
+  - Los socios activos los ve cualquiera; lo pendiente, solo el jugador, la gente del club y el admin.
+  - Los jugadores que carga el club quedan socios solos (trigger). Los que ya existían pasaron a ser socios de su club. Si después la persona reclama su perfil, sigue siendo socia y puede irse.
+  - Un jugador puede ser socio de varios clubs. `players.club_id` queda como "el club que lo cargó" (quién lo edita), y `club_members` (dueño/staff) solo para quien administra.
+  - `log_match_result` ahora pide que los dos jugadores sean socios activos, y el límite de jugadores del plan del club cuenta socios activos.
+  - Pantallas: en la página del club, "Pedir sumarme" / cancelar / aceptar o rechazar la invitación / "Salir del club", y la lista pasa a ser de socios. En Mi club, una sección Socios con solicitudes para aprobar o rechazar, invitaciones enviadas para cancelar y los socios para sacar. En el perfil de otro jugador con cuenta, pestaña de opciones: "Invitar" a cada club que manejás. En tu perfil, arriba, las invitaciones para aceptar o rechazar, y en opciones los clubs de los que sos socio.
+  - Migración `2026-10-22-socios-club.sql`, probada en un Postgres local: corrida dos veces sin errores y 20 casos de permisos (pedir, invitar, aprobar, aceptar, salir, sacar, intentos sin permiso, invitar a alguien sin cuenta, escribir la tabla directo, partido jugado con y sin socios, límite del plan). Ahí apareció y se cerró un agujero: una cuenta sin jugador podía aceptar una invitación ajena por una comparación con NULL.
+- **Pendiente:** push y después correr la migración en producción (hasta correrla, las pantallas nuevas dan error al leer `club_players`); probar en producción con dos cuentas: pedir y aprobar, invitar y aceptar, salir.
+- **Pendiente (idea):** avisar de una invitación o solicitud nueva con un número en la barra de navegación.
 
 ## 7. Próximo paso concreto
 

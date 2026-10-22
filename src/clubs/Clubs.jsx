@@ -1,12 +1,15 @@
 import { useEffect, useState } from "react";
-import { getClubs, createClub, deleteClub, createTable, renameTable, deleteTable } from "../services/ClubService";
+import {
+  getClubs, createClub, deleteClub, createTable, renameTable, deleteTable,
+  getClubPlayers, acceptClubMembership, removeClubMembership,
+} from "../services/ClubService";
 import { addClubMemberByPhone, createMyClub, logMatchResult } from "../services/AccountService";
 import { useAuth } from "../context/AuthContext";
-import { usePlayers } from "../context/PlayerContext";
+import { Link } from "react-router-dom";
 import { useMatches } from "../context/MatchContext";
 import "./Clubs.css";
 
-// Partido ya jugado, sin mesa ni cámara (solo jugadores del club)
+// Partido ya jugado, sin mesa ni cámara (solo socios del club)
 function LogMatchForm({ club, players, onSubmit }) {
   const [form, setForm] = useState({ p1: "", p2: "", score1: "", score2: "", winner: "" });
   const set = (field) => (e) => setForm((f) => ({ ...f, [field]: e.target.value }));
@@ -26,7 +29,7 @@ function LogMatchForm({ club, players, onSubmit }) {
   }
 
   if (players.length < 2) {
-    return <p className="clubs-empty">Para cargar un partido jugado, el club necesita al menos dos jugadores propios.</p>;
+    return <p className="clubs-empty">Para cargar un partido jugado, el club necesita al menos dos socios.</p>;
   }
 
   return (
@@ -54,13 +57,70 @@ function LogMatchForm({ club, players, onSubmit }) {
   );
 }
 
+// Socios del club (ROADMAP 6.14): solicitudes para aprobar, invitaciones que
+// esperan respuesta y socios. A un jugador con cuenta se lo invita desde su
+// perfil; los que carga el club (gente sin app) son socios directo.
+function SociosSection({ club, rows, onAction }) {
+  const requests = rows.filter((m) => m.status === "pending" && m.requested_by === "player");
+  const invites  = rows.filter((m) => m.status === "pending" && m.requested_by === "club");
+  const active   = rows.filter((m) => m.status === "active");
+  const name = (m) => m.player?.name ?? "Jugador";
+
+  function handleRemove(m) {
+    if (!window.confirm(`¿Sacar a ${name(m)} de ${club.name}?`)) return;
+    onAction(() => removeClubMembership(club.id, m.player_id));
+  }
+
+  return (
+    <div className="club-socios">
+      <h3>Socios ({active.length})</h3>
+
+      {requests.length > 0 && (
+        <ul className="tables-list">
+          {requests.map((m) => (
+            <li key={m.player_id} className="table-row">
+              <span>{name(m)} pidió sumarse</span>
+              <button className="table-copy" onClick={() => onAction(() => acceptClubMembership(club.id, m.player_id))}>aprobar</button>
+              <button className="table-copy" onClick={() => onAction(() => removeClubMembership(club.id, m.player_id))}>rechazar</button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {invites.length > 0 && (
+        <ul className="tables-list">
+          {invites.map((m) => (
+            <li key={m.player_id} className="table-row">
+              <span>{name(m)} <span className="muted">· invitado, falta que acepte</span></span>
+              <button className="table-copy" onClick={() => onAction(() => removeClubMembership(club.id, m.player_id))}>cancelar</button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {active.length === 0 ? (
+        <p className="clubs-empty">Todavía no tiene socios.</p>
+      ) : (
+        <ul className="tables-list">
+          {active.map((m) => (
+            <li key={m.player_id} className="table-row">
+              <span><Link to={`/jugadores/${m.player_id}`}>{name(m)}</Link>{!m.player?.user_id && <span className="muted"> · sin app</span>}</span>
+              {m.player?.user_id && <button className="action-danger" onClick={() => handleRemove(m)} title="Sacar del club">✕</button>}
+            </li>
+          ))}
+        </ul>
+      )}
+      <p className="clubs-empty">Para sumar a alguien que tiene la app, buscalo en Buscar y tocá Invitar en su perfil. También puede pedir sumarse desde la página del club.</p>
+    </div>
+  );
+}
+
 // Clubs y mesas (Fase 1). Desde la Fase 3: el admin ve y maneja todo; una
 // cuenta de club ve solo sus clubs y maneja sus mesas. Cualquier cuenta real
 // crea su propio club y queda como dueña; el dueño da acceso a otros.
 // Abrir/cerrar una mesa y su QR se manejan desde Nueva partida.
 export default function Clubs() {
   const { account, refreshAccount } = useAuth();
-  const { players } = usePlayers();
   const { reloadMatches } = useMatches();
   const isAdmin = !!account?.is_admin;
   const myClubIds = (account?.clubs ?? []).map((c) => c.id);
@@ -76,6 +136,7 @@ export default function Clubs() {
   const [newLabels, setNewLabels] = useState({}); // club_id -> texto del input "nueva mesa"
   const [copiedId, setCopiedId] = useState(null);
   const [showCreate, setShowCreate] = useState(false);
+  const [socios, setSocios] = useState({}); // club_id -> filas de club_players
 
   async function loadClubs() {
     try {
@@ -91,6 +152,28 @@ export default function Clubs() {
   useEffect(() => {
     loadClubs();
   }, []);
+
+  const visibleClubs = isAdmin ? clubs : clubs.filter((c) => myClubIds.includes(c.id));
+  const visibleKey = visibleClubs.map((c) => c.id).join(",");
+
+  async function loadSocios(ids) {
+    const entries = await Promise.all(ids.map(async (cid) => [cid, await getClubPlayers(cid).catch(() => [])]));
+    setSocios((s) => ({ ...s, ...Object.fromEntries(entries) }));
+  }
+
+  useEffect(() => {
+    if (visibleKey) loadSocios(visibleKey.split(","));
+  }, [visibleKey]);
+
+  async function handleSociosAction(clubId, action) {
+    try {
+      await action();
+      setError(null);
+    } catch (e) {
+      setError(e.message.replace(/^PLAN_LIMIT: /, ""));
+    }
+    await loadSocios([clubId]);
+  }
 
   async function run(action) {
     try {
@@ -182,8 +265,6 @@ export default function Clubs() {
     return <p className="page empty">Para crear o manejar un club, entrá con tu cuenta.</p>;
   }
 
-  const visibleClubs = isAdmin ? clubs : clubs.filter((c) => myClubIds.includes(c.id));
-
   return (
     <div className="page clubs-page">
       <h1>{isAdmin ? "Clubs y mesas" : visibleClubs.length > 1 ? "Mis clubs" : "Mi club"}</h1>
@@ -270,7 +351,7 @@ export default function Clubs() {
               <form className="table-form" onSubmit={(e) => handleAddOwner(e, club)}>
                 <input
                   type="text"
-                  placeholder="Celu o mail de quien va a manejar el club"
+                  placeholder="Celu o mail de quien va a administrar el club"
                   value={ownerPhones[club.id] ?? ""}
                   onChange={(e) => setOwnerPhones((p) => ({ ...p, [club.id]: e.target.value }))}
                 />
@@ -285,9 +366,15 @@ export default function Clubs() {
               </form>
             )}
 
+            <SociosSection
+              club={club}
+              rows={socios[club.id] ?? []}
+              onAction={(action) => handleSociosAction(club.id, action)}
+            />
+
             <LogMatchForm
               club={club}
-              players={players.filter((p) => p.club_id === club.id)}
+              players={(socios[club.id] ?? []).filter((m) => m.status === "active").map((m) => m.player).filter(Boolean)}
               onSubmit={handleLogMatch}
             />
           </li>
