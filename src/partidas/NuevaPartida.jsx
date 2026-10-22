@@ -3,14 +3,38 @@ import QRCode from "react-qr-code";
 import { usePlayers } from "../context/PlayerContext";
 import { useMatches } from "../context/MatchContext";
 import { getTables, setTableAvailability, setTableDiscipline } from "../services/ClubService";
-import { DISCIPLINES } from "../services/MatchService";
+import { DISCIPLINES, MODES } from "../services/MatchService";
 import { createGuestPlayer } from "../services/AccountService";
 import { useAuth } from "../context/AuthContext";
 import { Link, useNavigate } from "react-router-dom";
 import "./Partida.css";
 
-const GUEST = "guest"; // Jugador 2 sin cuenta: se crea como invitado al arrancar
+const GUEST = "guest"; // Jugador sin cuenta: se crea como invitado al arrancar
 const AVAILABILITY_LABEL = { closed: "Cerrada", waiting: "Abierta", in_match: "En partida" };
+const MAX_PER_SIDE = 3; // hasta 3 vs 3 (ROADMAP 6.15)
+const emptySlot = { id: "", guestName: "" };
+
+// Un lugar de un lado: jugador cargado o invitado con nombre libre
+function PlayerSlot({ label, slot, players, onChange }) {
+  return (
+    <>
+      <label className="field">
+        <span>{label}</span>
+        <select value={slot.id} onChange={(e) => onChange({ ...slot, id: e.target.value })} required>
+          <option value="">Elegí un jugador</option>
+          <option value={GUEST}>Invitado (sin cuenta)</option>
+          {players.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+        </select>
+      </label>
+      {slot.id === GUEST && (
+        <label className="field">
+          <span>Nombre del invitado</span>
+          <input type="text" value={slot.guestName} onChange={(e) => onChange({ ...slot, guestName: e.target.value })} placeholder="Ej: Juan" required />
+        </label>
+      )}
+    </>
+  );
+}
 
 export default function NuevaPartida() {
   const { players, reloadPlayers } = usePlayers();
@@ -22,9 +46,9 @@ export default function NuevaPartida() {
   // club, así que también la abre o la cierra.
   const myClubIds = (account?.clubs ?? []).map((c) => c.id);
   const tables = account?.is_admin ? allTables : allTables.filter((t) => myClubIds.includes(t.club_id));
-  const [p1, setP1] = useState(account?.player?.id ?? "");
-  const [p2, setP2] = useState("");
-  const [guestName, setGuestName] = useState("");
+  // Los dos lados de la partida; con más de uno por lado es por equipos
+  const [sides, setSides] = useState([[{ ...emptySlot, id: account?.player?.id ?? "" }], [emptySlot]]);
+  const [mode, setMode] = useState("match");
   const [tableId, setTableId] = useState(""); // "" = partida suelta, sin mesa
   const [looseDiscipline, setLooseDiscipline] = useState("pool"); // la de la partida suelta
   const [error, setError] = useState(null);
@@ -65,17 +89,43 @@ export default function NuevaPartida() {
     }
   }
 
+  const perSide = sides[0].length;
+  const chosen = sides.flat().map((slot) => slot.id).filter((id) => id && id !== GUEST);
+  const ready =
+    sides.flat().every((slot) => slot.id && (slot.id !== GUEST || slot.guestName.trim())) &&
+    new Set(chosen).size === chosen.length;
+
+  function setSlot(side, index, slot) {
+    setSides((prev) => prev.map((s, i) => (i === side ? s.map((x, j) => (j === index ? slot : x)) : s)));
+  }
+
+  // Suma o saca un jugador de cada lado (1 vs 1, 2 vs 2, 3 vs 3)
+  function resize(delta) {
+    setSides((prev) => prev.map((s) => (delta > 0 ? [...s, emptySlot] : s.slice(0, -1))));
+  }
+
   async function handleStart(e) {
     e.preventDefault();
     setBusy(true);
     setError(null);
     try {
-      let rivalId = p2;
-      if (p2 === GUEST) {
-        rivalId = (await createGuestPlayer(guestName.trim())).id;
-        reloadPlayers();
+      let createdGuest = false;
+      const ids = [];
+      for (const side of sides) {
+        const sideIds = [];
+        for (const slot of side) {
+          if (slot.id === GUEST) {
+            sideIds.push((await createGuestPlayer(slot.guestName.trim())).id);
+            createdGuest = true;
+          } else {
+            sideIds.push(slot.id);
+          }
+        }
+        ids.push(sideIds);
       }
-      const match = await startMatch(p1, rivalId, table, discipline);
+      if (createdGuest) reloadPlayers();
+      const teammates = ids.flatMap((sideIds, i) => sideIds.slice(1).map((player_id) => ({ player_id, side: i + 1 })));
+      const match = await startMatch(ids[0][0], ids[1][0], table, discipline, { mode, teammates });
       // Desde el celu vas directo al control. Desde la PC, a la pantalla con el
       // QR para manejar la partida desde un celu.
       const mobile = window.matchMedia("(pointer: coarse)").matches;
@@ -96,29 +146,41 @@ export default function NuevaPartida() {
       </div>
 
       <form className="form" onSubmit={handleStart}>
-        <label className="field">
-          <span>Jugador 1</span>
-          <select value={p1} onChange={(e) => setP1(e.target.value)} required>
-            <option value="">Elegí un jugador</option>
-            {players.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-          </select>
-        </label>
+        {sides.map((side, i) => (
+          <fieldset key={i} className="side-fieldset">
+            {perSide > 1 && <legend>Equipo {i + 1}</legend>}
+            {side.map((slot, j) => (
+              <PlayerSlot
+                key={j}
+                label={perSide > 1 ? `Jugador ${j + 1}` : `Jugador ${i + 1}`}
+                slot={slot}
+                players={players.filter((p) => p.id === slot.id || !chosen.includes(p.id))}
+                onChange={(next) => setSlot(i, j, next)}
+              />
+            ))}
+          </fieldset>
+        ))}
+
+        <div className="side-actions">
+          {perSide < MAX_PER_SIDE && (
+            <button type="button" className="btn btn-secondary btn-small" onClick={() => resize(1)}>
+              + Sumar jugador por lado
+            </button>
+          )}
+          {perSide > 1 && (
+            <button type="button" className="link-btn" onClick={() => resize(-1)}>
+              Volver a {perSide - 1} vs {perSide - 1}
+            </button>
+          )}
+        </div>
 
         <label className="field">
-          <span>Jugador 2</span>
-          <select value={p2} onChange={(e) => setP2(e.target.value)} required>
-            <option value="">Elegí un jugador</option>
-            <option value={GUEST}>Invitado (sin cuenta)</option>
-            {players.filter((p) => p.id !== p1).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+          <span>Tipo</span>
+          <select value={mode} onChange={(e) => setMode(e.target.value)}>
+            {Object.entries(MODES).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
           </select>
         </label>
-
-        {p2 === GUEST && (
-          <label className="field">
-            <span>Nombre del invitado</span>
-            <input type="text" value={guestName} onChange={(e) => setGuestName(e.target.value)} placeholder="Ej: Juan" required />
-          </label>
-        )}
+        {mode === "practice" && <p className="muted">Sin puntos ni ganador: queda en el historial pero no suma a las estadísticas.</p>}
 
         {tables.length > 0 && (
           <label className="field">
@@ -159,7 +221,7 @@ export default function NuevaPartida() {
         )}
 
         {error && <p className="error">{error}</p>}
-        <button className="btn btn-block" type="submit" disabled={busy || !p1 || !p2 || (p2 === GUEST && !guestName.trim())}>
+        <button className="btn btn-block" type="submit" disabled={busy || !ready}>
           {busy ? "Arrancando…" : "Arrancar partida"}
         </button>
       </form>

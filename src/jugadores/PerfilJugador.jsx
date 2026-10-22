@@ -7,6 +7,7 @@ import { getClipsByPlayer } from "../services/ClipService";
 import { getPlayerMemberships, inviteToClub, acceptClubMembership, removeClubMembership } from "../services/ClubService";
 import ClipList from "../clips/ClipList.jsx";
 import MatchRow from "../partidas/MatchRow.jsx";
+import { isPractice, sideOf, winnerSide } from "../partidas/sides";
 import Avatar from "../components/Avatar.jsx";
 import { usePlan } from "../plan/usePlan";
 import { useAuth } from "../context/AuthContext";
@@ -114,9 +115,10 @@ export function PlayerProfile({ playerId, own = false, options = null }) {
   const canDelete = !own && (isAdmin || (!player.user_id && myClubIds.includes(player.club_id)));
 
   const nameOf = (id) => players.find((p) => p.id === id)?.name ?? "Jugador";
-  const myMatches = matches.filter((m) => m.player1_id === playerId || m.player2_id === playerId);
-  const finished = myMatches.filter((m) => m.status === "finished");
-  const wins = finished.filter((m) => m.winner_id === playerId).length;
+  const myMatches = matches.filter((m) => sideOf(m, playerId) !== null);
+  // Las prácticas quedan en el historial pero no cuentan como jugadas ni ganadas
+  const finished = myMatches.filter((m) => m.status === "finished" && !isPractice(m));
+  const wins = finished.filter((m) => winnerSide(m) === sideOf(m, playerId)).length;
   const winrate = finished.length ? Math.round((wins / finished.length) * 100) : 0;
   const shown = showAll ? myMatches : myMatches.slice(0, RECENT);
   const tabs = [

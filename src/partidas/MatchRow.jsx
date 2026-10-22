@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
-import { DISCIPLINES } from "../services/MatchService";
+import { DISCIPLINES, MODES } from "../services/MatchService";
+import { formatLabel, isPractice, showsScore, sideName, sideOf, winnerSide } from "./sides";
 
 function shortDate(iso) {
   if (!iso) return "";
@@ -13,33 +14,43 @@ function shortDate(iso) {
 }
 
 // Una partida en una lista. Con `me` (id de jugador) se muestra desde su lado:
-// "vs rival", G/P y su puntaje primero. Sin `me`, "A vs B".
+// "vs rival", G/P y su puntaje primero. Sin `me`, "A vs B". Pool y práctica
+// van sin marcador; la práctica tampoco tiene G/P (ROADMAP 6.15).
 export default function MatchRow({ match: m, nameOf, me = null }) {
-  const mine = me && (m.player1_id === me || m.player2_id === me);
-  const meFirst = mine && m.player2_id === me ? false : true;
+  const mySide = sideOf(m, me);
+  const mine = mySide !== null;
+  const meFirst = mySide !== 2;
   const [a, b] = meFirst ? [m.score1 ?? 0, m.score2 ?? 0] : [m.score2 ?? 0, m.score1 ?? 0];
   const finished = m.status === "finished";
-  const rival = mine ? (m.player1_id === me ? m.player2_id : m.player1_id) : null;
-  const won = mine && finished && m.winner_id === me;
+  const practice = isPractice(m);
+  const won = mine && finished && winnerSide(m) === mySide;
+  const sub = [
+    m.discipline === "ping_pong" && DISCIPLINES.ping_pong,
+    formatLabel(m),
+    practice && MODES.practice,
+    !finished && "En curso",
+  ].filter(Boolean);
 
   return (
     <li>
       <Link className="list-row" to={!finished && mine ? `/partida/${m.id}/control` : `/partida/${m.id}`}>
         {mine ? (
-          <span className={`result${won ? " result-win" : ""}`}>{finished ? (won ? "G" : "P") : <span className="live-dot" title="En curso" />}</span>
+          <span className={`result${won ? " result-win" : ""}`}>
+            {!finished ? <span className="live-dot" title="En curso" /> : practice ? "–" : won ? "G" : "P"}
+          </span>
         ) : null}
         <span className="list-row-main">
           <span className="list-row-title">
-            {mine ? `vs ${nameOf(rival)}` : `${nameOf(m.player1_id)} vs ${nameOf(m.player2_id)}`}
+            {mine ? `vs ${sideName(m, mySide === 1 ? 2 : 1, nameOf)}` : `${sideName(m, 1, nameOf)} vs ${sideName(m, 2, nameOf)}`}
           </span>
-          {(!finished || m.discipline === "ping_pong") && (
+          {sub.length > 0 && (
             <span className="list-row-sub">
               {!finished && !mine && <span className="live-dot" />}{" "}
-              {[m.discipline === "ping_pong" && DISCIPLINES.ping_pong, !finished && "En curso"].filter(Boolean).join(" · ")}
+              {sub.join(" · ")}
             </span>
           )}
         </span>
-        <span className="score">{a}–{b}</span>
+        {showsScore(m) && <span className="score">{a}–{b}</span>}
         <span className="list-row-sub match-date">{shortDate(m.started_at)}</span>
       </Link>
     </li>

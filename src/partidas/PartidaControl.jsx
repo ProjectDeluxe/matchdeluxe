@@ -5,6 +5,7 @@ import { useMatches } from "../context/MatchContext";
 import { supabase } from "../supabaseClient";
 import { usePlan } from "../plan/usePlan";
 import { planLimitMessage } from "../services/PlanService";
+import { isPractice, showsScore, sideIds, sideName, winnerSide } from "./sides";
 import "./PartidaControl.css";
 
 export default function PartidaControl() {
@@ -164,6 +165,15 @@ export default function PartidaControl() {
   const p1 = match.player1;
   const p2 = match.player2;
   const finished = match.status === "finished";
+  const practice = isPractice(match);
+  const scored = showsScore(match); // pool y práctica van sin marcador (ROADMAP 6.15)
+  const people = [p1, p2, ...(match.teammates ?? []).map((t) => t.player)].filter(Boolean);
+  const nameOf = (pid) => people.find((p) => p.id === pid)?.name ?? "Jugador";
+  // "con Beto y Carla": el resto del equipo, debajo del primero de cada lado
+  const teamLine = (side) => {
+    const rest = sideIds(match, side).slice(1).map(nameOf);
+    return rest.length ? `con ${rest.join(" y ")}` : null;
+  };
   const clipsLeft = plan?.clips_per_month == null ? null : Math.max(0, plan.clips_per_month - (usage?.clips_used ?? 0));
 
   return (
@@ -178,7 +188,7 @@ export default function PartidaControl() {
       </div>
 
       {/* Marcador */}
-      <div className="ctrl-score">
+      <div className={`ctrl-score${scored ? "" : " ctrl-score-plain"}`}>
         {/* Jugador 1 */}
         <div className="ctrl-player">
           {p1?.avatar_url
@@ -186,10 +196,11 @@ export default function PartidaControl() {
             : <div className="ctrl-avatar-placeholder">{(p1?.name ?? "J").charAt(0).toUpperCase()}</div>
           }
           <span className="ctrl-name">{p1?.name ?? "Jugador 1"}</span>
+          {teamLine(1) && <span className="ctrl-team">{teamLine(1)}</span>}
 
-          <div className="ctrl-score-num">{match.score1 ?? 0}</div>
+          {scored && <div className="ctrl-score-num">{match.score1 ?? 0}</div>}
 
-          {!finished && (
+          {scored && !finished && (
             <div className="ctrl-btns">
               <button className="score-btn minus" onClick={subScore1}>−</button>
               <button className="score-btn plus"  onClick={addScore1}>+1</button>
@@ -206,10 +217,11 @@ export default function PartidaControl() {
             : <div className="ctrl-avatar-placeholder">{(p2?.name ?? "J").charAt(0).toUpperCase()}</div>
           }
           <span className="ctrl-name">{p2?.name ?? "Jugador 2"}</span>
+          {teamLine(2) && <span className="ctrl-team">{teamLine(2)}</span>}
 
-          <div className="ctrl-score-num">{match.score2 ?? 0}</div>
+          {scored && <div className="ctrl-score-num">{match.score2 ?? 0}</div>}
 
-          {!finished && (
+          {scored && !finished && (
             <div className="ctrl-btns">
               <button className="score-btn minus" onClick={subScore2}>−</button>
               <button className="score-btn plus"  onClick={addScore2}>+1</button>
@@ -219,9 +231,10 @@ export default function PartidaControl() {
       </div>
 
       {/* Ganador */}
-      {finished && match.winner_id && (
+      {finished && practice && <div className="ctrl-winner">Práctica terminada</div>}
+      {finished && winnerSide(match) && (
         <div className="ctrl-winner">
-          Ganó {match.winner_id === p1?.id ? p1?.name : p2?.name}
+          Ganó {sideName(match, winnerSide(match), nameOf)}
         </div>
       )}
 
@@ -276,8 +289,25 @@ export default function PartidaControl() {
               className="action-btn end-btn"
               onClick={() => setConfirmEnd(true)}
             >
-              Terminar partida
+              {practice ? "Terminar práctica" : "Terminar partida"}
             </button>
+          ) : practice ? (
+            <div className="confirm-end">
+              <p className="confirm-label">¿Terminar la práctica?</p>
+              <button
+                className="action-btn winner-btn"
+                onClick={() => handleFinish(null)}
+                disabled={finishing}
+              >
+                Terminar
+              </button>
+              <button
+                className="cancel-btn"
+                onClick={() => setConfirmEnd(false)}
+              >
+                Cancelar
+              </button>
+            </div>
           ) : (
             <div className="confirm-end">
               <p className="confirm-label">¿Quién ganó?</p>
@@ -286,14 +316,14 @@ export default function PartidaControl() {
                 onClick={() => handleFinish(p1?.id)}
                 disabled={finishing}
               >
-                {p1?.name ?? "Jugador 1"}
+                {sideName(match, 1, nameOf)}
               </button>
               <button
                 className="action-btn winner-btn"
                 onClick={() => handleFinish(p2?.id)}
                 disabled={finishing}
               >
-                {p2?.name ?? "Jugador 2"}
+                {sideName(match, 2, nameOf)}
               </button>
               <button
                 className="cancel-btn"

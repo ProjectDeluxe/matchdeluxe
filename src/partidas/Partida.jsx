@@ -1,7 +1,8 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import QRCode from "react-qr-code";
-import { getMatchById, DISCIPLINES } from "../services/MatchService";
+import { getMatchById, DISCIPLINES, MODES } from "../services/MatchService";
+import { formatLabel, isPractice, showsScore, sideName, winnerSide } from "./sides";
 import { supabase } from "../supabaseClient";
 import "./Partida.css";
 
@@ -43,16 +44,19 @@ export default function Partida() {
   const p1 = match.player1;
   const p2 = match.player2;
   const finished = match.status === "finished";
+  const scored = showsScore(match); // pool y práctica van sin marcador (ROADMAP 6.15)
+  const people = [p1, p2, ...(match.teammates ?? []).map((t) => t.player)].filter(Boolean);
+  const nameOf = (pid) => people.find((p) => p.id === pid)?.name ?? "Jugador";
 
   return (
     <div className="partida-pc">
       {/* Encabezado */}
       <div className="partida-header">
         <h1 className="partida-title">
-          {p1?.name ?? "Jugador 1"} <span className="vs">vs</span> {p2?.name ?? "Jugador 2"}
+          {sideName(match, 1, nameOf)} <span className="vs">vs</span> {sideName(match, 2, nameOf)}
         </h1>
         <span className="partida-mesa">
-          {[match.table?.club?.name, match.table?.label, DISCIPLINES[match.discipline] ?? DISCIPLINES.pool].filter(Boolean).join(" · ")}
+          {[match.table?.club?.name, match.table?.label, DISCIPLINES[match.discipline] ?? DISCIPLINES.pool, formatLabel(match), isPractice(match) && MODES.practice].filter(Boolean).join(" · ")}
         </span>
         <span className={`partida-status ${finished ? "status-finished" : "status-active"}`}>
           {finished ? "Terminada" : "En curso"}
@@ -60,7 +64,8 @@ export default function Partida() {
       </div>
 
       <div className="partida-body">
-        {/* Marcador */}
+        {/* Marcador (solo ping pong de partido) */}
+        {scored && (
         <div className="score-board">
           <div className="score-side">
             {p1?.avatar_url && (
@@ -80,6 +85,7 @@ export default function Partida() {
             <span className="score-number">{match.score2 ?? 0}</span>
           </div>
         </div>
+        )}
 
         {/* QR */}
         {!finished && (
@@ -98,12 +104,12 @@ export default function Partida() {
         )}
 
         {/* Ganador */}
-        {finished && match.winner_id && (
+        {finished && winnerSide(match) && (
           <div className="winner-banner">
-            Ganó{" "}
-            {match.winner_id === p1?.id ? p1?.name : p2?.name}
+            Ganó {sideName(match, winnerSide(match), nameOf)}
           </div>
         )}
+        {finished && isPractice(match) && <div className="winner-banner">Práctica terminada</div>}
       </div>
 
       <button className="btn btn-secondary back-btn" onClick={() => navigate("/partida")}>

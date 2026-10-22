@@ -135,3 +135,7 @@
 .cancel-btn { background: none; border: none; color: var(--muted); padding: 8px; font-weight: 600; }
 
 .ctrl-loading { min-height: 60vh; display: flex; align-items: center; justify-content: center; color: var(--muted); }
+
+/* Sin marcador (pool y práctica): el VS va centrado y no tan abajo */
+.ctrl-score-plain .ctrl-vs { margin-top: 20px; }
+.ctrl-team { color: var(--muted); font-size: 0.85rem; text-align: center; overflow-wrap: anywhere; }

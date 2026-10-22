@@ -1,13 +1,16 @@
 import { supabase } from "../supabaseClient";
 
-// Disciplinas (ROADMAP 6.13). El marcador es el mismo para todas.
+// Disciplinas (ROADMAP 6.13). Pool se juega a ganador, sin marcador (6.15).
 export const DISCIPLINES = { pool: "Pool", ping_pong: "Ping pong" };
 
-// Trae todas las partidas (para historial)
+// Partido (cuenta para el perfil) o práctica (sin puntos ni ganador), ROADMAP 6.15
+export const MODES = { match: "Partido", practice: "Práctica" };
+
+// Trae todas las partidas (para historial), con el resto de cada equipo
 export async function getMatches() {
   const { data, error } = await supabase
     .from("matches")
-    .select("*")
+    .select("*, teammates:match_teammates(player_id, side)")
     .order("started_at", { ascending: false });
 
   if (error) throw error;
@@ -22,6 +25,7 @@ export async function getMatchById(id) {
       *,
       player1:players!player1_id(id, name, avatar_url),
       player2:players!player2_id(id, name, avatar_url),
+      teammates:match_teammates(side, player:players(id, name, avatar_url)),
       table:tables!table_id(id, label, club:clubs(id, name))
     `)
     .eq("id", id)
@@ -33,7 +37,10 @@ export async function getMatchById(id) {
 
 // Crea una partida nueva (mesa opcional: sin mesa queda como partida suelta).
 // En una mesa, la base usa la disciplina de la mesa y no la que viene acá.
-export async function createMatch(player1_id, player2_id, table = null, discipline = "pool") {
+// teammates: el resto de cada equipo, [{ player_id, side: 1 | 2 }].
+export async function createMatch(player1_id, player2_id, table = null, discipline = "pool", { mode = "match", teammates = [] } = {}) {
+  // Solo el ping pong de partido lleva marcador
+  const scored = discipline === "ping_pong" && mode === "match";
   const { data, error } = await supabase
     .from("matches")
     .insert({
@@ -42,14 +49,22 @@ export async function createMatch(player1_id, player2_id, table = null, discipli
       club_id: table?.club_id ?? null,
       table_id: table?.id ?? null,
       discipline,
-      score1: 0,
-      score2: 0,
+      mode,
+      score1: scored ? 0 : null,
+      score2: scored ? 0 : null,
       status: "active",
     })
     .select()
     .single();
 
   if (error) throw error;
+
+  if (teammates.length > 0) {
+    const { error: teamError } = await supabase
+      .from("match_teammates")
+      .insert(teammates.map((t) => ({ ...t, match_id: data.id })));
+    if (teamError) throw teamError;
+  }
   return data;
 }
 
