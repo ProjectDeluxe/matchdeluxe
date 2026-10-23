@@ -58,11 +58,13 @@ export default function NuevaPartida() {
   // Los lados de la partida (dos o más); cada uno con uno o más jugadores
   const [sides, setSides] = useState([[{ ...emptySlot, id: account?.player?.id ?? "" }], [emptySlot]]);
   const [mode, setMode] = useState("match");
-  const [tableId, setTableId] = useState(""); // "" = partida suelta, sin mesa
+  const [chosenTableId, setTableId] = useState(null); // "" = partida suelta, sin mesa; null = todavía no eligió
   const [looseDiscipline, setLooseDiscipline] = useState("pool"); // la de la partida suelta
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
   const navigate = useNavigate();
+  // Con una sola mesa a mano, viene elegida (se puede pasar a "Sin mesa")
+  const tableId = chosenTableId ?? (tables.length === 1 ? tables[0].id : "");
   const table = tables.find((t) => t.id === tableId) ?? null;
   // En una mesa manda la disciplina de la mesa (también para quien entra por el QR)
   const discipline = table ? table.discipline ?? "pool" : looseDiscipline;

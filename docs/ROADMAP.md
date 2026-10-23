@@ -562,8 +562,9 @@ Fase 3 cerrada: planes y límites (6.3), modelo de cuentas (6.4), vivo y repetic
 - **Socios en las mesas (2026-10-23):** un socio invitado no veía las mesas en Nueva partida (se filtraban por `club_members`), así que no podía arrancar en una mesa ni tener repetición. Decisión de Agus: abrir y cerrar la mesa sigue siendo del dueño o el staff (la forma de abrirla va a cambiar), pero para las pruebas un socio puede arrancar una partida en una mesa de su club si no hay otra en curso, aunque esté cerrada para el QR.
   - Base (migración `2026-10-23-socios-mesas.sql`): `is_club_socio(club)`; la política `matches_insert` deja crear en una mesa del club a un socio activo; `guard_matches` frena una partida nueva en una mesa con otra en curso para todos los que no son del club ni admin (socios y también el QR). Probada en Postgres local (no socio, pendiente, socio con mesa cerrada, segunda partida en la misma mesa, mesa de otro club, dueño, después de terminar, partida suelta, socio que intenta abrir la mesa).
   - Nueva partida: el socio ve las mesas de sus clubs; no ve abrir/cerrar ni el QR, la disciplina queda la de la mesa, y si hay una partida en curso se avisa y no deja arrancar.
+  - Si tenés una sola mesa a mano, Nueva partida la trae elegida (se puede pasar a "Sin mesa"). Pedido de Agus el 2026-10-23, después de que su papá arrancara partidas sin mesa y la PC de la mesa ignorara sus repeticiones.
   - Ojo: una partida que quedó sin terminar en una mesa la bloquea para los socios hasta que alguien la termine (el club puede).
-  - Migración corrida por Agus el 2026-10-23. Pendiente: probar con la cuenta de un socio.
+  - Migración corrida y probado por Agus con la cuenta de su papá (socio) el 2026-10-23.
   - Para las pruebas (2026-10-23), Agus cambió por SQL `plan_for_user` para que toda cuenta sin suscripción sea Pro en vez de Free. Volver a 'free' antes de usarlo con clubes reales.
 - **Pendiente (idea):** avisar de una invitación o solicitud nueva con un número en la barra de navegación.
 
