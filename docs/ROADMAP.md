@@ -132,17 +132,39 @@ Además, se sacó el botón de "guardar clip" del control del celu: por ahora la
 - **Conexión a la tele**: al no ser tiempo real estricto, no hace falta cable HDMI obligatorio — una tele inalámbrica (Chromecast, smart TV en la red local) funciona bien, aunque el cable directo sigue siendo la opción más simple y confiable para instalar.
 - **Hardware**: se mantiene la recomendación de mini-PC tipo Intel N100 — de sobra para mantener el buffer, reproducir la repetición, y codificar/subir un clip ocasional, todo en el mismo equipo.
 
-### 5.2 Distribución del agente a clubes reales (futuro — no para el piloto de hoy)
+### 5.2 Distribución del agente a clubes reales (plan acordado 2026-10-19, para la Fase 5 y después)
 
-**Idea de Agus (2026-10-06):** en vez de que cada club configure el agente a mano, que el panel del club (todavía no existe) tenga un botón de "descargar agente para esta mesa" después de loguearse y pasar una verificación — les llega la carpeta ya lista para esa mesa puntual, sin que el club tenga que copiar y pegar claves de Supabase.
+**Idea de Agus (2026-10-06):** en vez de que cada club configure el agente a mano, que el panel del club tenga un botón de "descargar agente para esta mesa" después de loguearse y pasar una verificación, sin que el club tenga que copiar y pegar claves de Supabase.
 
-La idea es correcta y de hecho es justo lo que la tabla `devices` de la sección 4 ya estaba pensada para resolver — ahí falta conectar una pieza:
+**Criterio de seguridad (sigue vigente):** **no se puede embeber la `SUPABASE_SERVICE_KEY`** (la llave maestra que usa el agente de hoy) en nada que se instale en la computadora de un cliente: da acceso a la base completa, de todos los clubes. Cada PC tiene que tener un token propio y acotado (tabla `devices`, que ya existe y guarda solo `auth_token_hash`), validado por un backend propio (función serverless), con permisos solo sobre lo de su club y sus mesas. Perder o filtrar una PC compromete solo esa PC.
 
-- **No se puede embeber la `SUPABASE_SERVICE_KEY`** (la llave maestra que usa el agente de hoy) en un archivo que se descarga a la computadora de un cliente — esa key da acceso a la base completa, de todos los clubes. Si la PC de un club se compromete, se expone la información de todos los demás clubes, no solo el suyo.
-- En su lugar, el botón de descarga tiene que llamar a un backend propio (una función serverless, no el navegador directo a Supabase) que: valida que el club está verificado, crea una fila nueva en `devices` con un token propio y acotado para esa mesa (vía políticas RLS que solo le dejen leer/escribir lo de su `club_id`/`table_id`, no el resto de la base), arma el `.env` con ESE token (nunca con la service key), empaqueta la carpeta del agente al vuelo, y la entrega para descargar.
-- Con eso, perder o filtrar la carpeta de una mesa solo compromete esa mesa, no la plataforma entera.
+**Cómo queda (decidido con Agus, 2026-10-19):** en vez de un ZIP armado por mesa con el token adentro, **un solo instalador igual para todos + código de vinculación**:
+1. El club instala OBS y el instalador de MatchDeluxe (un .exe con Node y ffmpeg adentro).
+2. El agente abre una pantallita que pide un código de 6 dígitos. El club lo saca de Mi club → Mesa → "Vincular PC".
+3. El agente canjea el código en un endpoint nuestro (Vercel) por un token propio de esa PC (fila en `devices`). Nunca ve la service key.
+4. El agente configura OBS solo por websocket: perfil "MatchDeluxe" con encoder por hardware (QuickSync H.264 en Windows), 720p30, keyframe 1s, Replay Buffer de 65s, y la escena de la tele. Es la config probada en 6.12. Falta confirmar que el websocket de OBS permite cambiar el encoder y el Replay Buffer; si no, se escribe el perfil en los archivos de OBS antes de abrirlo.
+5. Arranca con el sistema, se reinicia si se cae y manda un "sigo vivo" (`devices.last_seen_at`) cada minuto. En Mi club se ve si la cámara de cada mesa está online.
 
-Esto depende de cosas que todavía no existen (login/panel de club, Fase 1 del modelo de datos) — no es para construir ahora, pero queda el criterio de seguridad anotado para no tener que rehacerlo más adelante bajo presión.
+Por qué el código y no el ZIP: el token nunca queda en un archivo que se pueda reenviar, se puede desvincular la PC desde el panel (el token deja de servir) y hay un solo instalador para mantener.
+
+**El agente se ata a la PC/cámara, no a la mesa.** Esto reemplaza el `TABLE_ID` fijo del `.env`:
+- Si el mismo lugar físico se usa para varios deportes (la mesa de pool que se vuelve de ping pong), es **una sola mesa** y se le cambia la disciplina cuando cambia el uso. Es la regla general.
+- Si un club quiere dos mesas separadas (QR, historial o precio distintos), la misma PC se vincula a las dos desde el panel y el agente escucha los comandos de todas sus mesas. Con una sola cámara no se pueden jugar dos partidas a la vez, así que la app no deja abrir una partida en una mesa mientras haya otra en curso en la otra mesa de la misma PC.
+
+**Clubes con varias canchas (Agus, 2026-10-19): una sola PC para todo el club, no una por cancha.** Con OBS no se puede: OBS tiene un solo Replay Buffer y graba lo que sale en pantalla, así que con un mosaico la repetición sería el mosaico entero; y un OBS por cámara recodifica cada video y satura la PC. Plan:
+- **Cámaras IP** (de red, un solo cable de corriente y datos). Ya mandan H.264, así que la PC no codifica, solo guarda. Las USB no sirven para canchas separadas (cable de unos 5 m, pocas por PC).
+- **El agente graba cada cámara con ffmpeg, sin OBS:** guarda los últimos 65 s de cada cancha en pedacitos y, cuando se pide repetición o clip, junta los de esa cancha. Es el "servicio propio" de la sección 9, que con varias canchas hace falta antes.
+- **Tele:** mosaico con todas las canchas en vivo; cuando alguien pide repetición, esa cancha va a pantalla completa y después vuelve al mosaico. También se puede elegir a mano qué cancha ver. Si cada cancha quiere su tele: 2 o 3 salidas HDMI de la mini-PC, o una tele smart con una página nuestra.
+- Cada mesa vinculada a la PC se asocia además a una cámara.
+- Decisión: con un club de una mesa se sigue con OBS. Con el primer club de varias canchas se pasa a cámaras IP + ffmpeg. Falta medir cuántas cámaras aguanta una mini-PC (sin recodificar deberían ser bastantes).
+
+**Mac y Linux:** el agente es portable (Node, ffmpeg y OBS corren en los tres), pero cambia el encoder (VideoToolbox en Mac, VAAPI en Linux), el instalador y el arranque automático (launchd, systemd). Mac además pide firmar el instalador (cuenta de desarrollador de Apple, USD 99/año) y permisos de cámara a mano. Decisión: al principio **solo Windows** (se le pide o se le vende al club una mini-PC Windows con Intel), con el código portable. Linux después, como base de la imagen pre-armada de la sección 9. Mac solo si un club lo pide.
+
+**Orden:**
+- Primeros clubes: Agus instala en persona, como hoy.
+- **Fase 5:** token por PC con código de vinculación, agente atado a la PC (varias mesas) y "sigo vivo". Es lo de seguridad: va antes de sumar clubes que no maneje Agus.
+- Después: instalador .exe con OBS autoconfigurado y actualización automática.
+- Mucho más adelante: reemplazar OBS por un servicio propio (sección 9).
 
 ## 6. Roadmap por fases
 
@@ -472,7 +494,7 @@ Fase 3 cerrada: planes y límites (6.3), modelo de cuentas (6.4), vivo y repetic
 
 **Costo a vigilar:** la transferencia, no el storage. Con Supabase Pro, 250 GB son ~96.000 reproducciones de un clip de 1 minuto por mes (6.3).
 
-**Fase 5 — Endurecer para producción real.** Ajustar las políticas RLS (hoy abiertas a "cualquier autenticado"), moderación de contenido público, monitoreo de mini-PCs (saber si una cámara se cayó), limpieza del código muerto y validaciones pendientes del punto 3.
+**Fase 5 — Endurecer para producción real.** Ajustar las políticas RLS (hoy abiertas a "cualquier autenticado"), moderación de contenido público, monitoreo de mini-PCs (saber si una cámara se cayó), limpieza del código muerto y validaciones pendientes del punto 3. También el token por PC con código de vinculación para el agente (ver 5.2).
 
 ### 6.10 Rediseño visual y de navegación (2026-10-18)
 
