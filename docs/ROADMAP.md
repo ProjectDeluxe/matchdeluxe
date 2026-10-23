@@ -548,6 +548,16 @@ Fase 3 cerrada: planes y límites (6.3), modelo de cuentas (6.4), vivo y repetic
 - **Pendiente:** armar equipos y práctica desde el QR de la mesa (hoy por QR es 1 vs 1 de partido); que los compañeros de equipo (no el primero de cada lado) también vean y publiquen los clips de la partida (hoy los clips quedan para `player1`/`player2`); "Cargar partido jugado" de Mi club sigue pidiendo puntos también en pool (se guardan pero no se muestran).
 - **Pendiente:** correr la migración y probar en producción: pool 1 vs 1 a ganador, 2 vs 2 en pool y ping pong, una práctica, y que las partidas viejas de pool se vean sin marcador.
 
+### 6.16 Equipos a medida, más de dos lados y juegos de mesa (2026-10-23)
+
+- **Pedido de Agus, después de probar 6.15:** sumar un jugador por lado se quedaba corto. Quería armar cada equipo por separado (2 vs 1) y poder jugar 1 vs 1 vs 1 para juegos de mesa.
+- **Nueva partida:** cada lado tiene "+ Sumar compañero" (hasta 4) y "Quitar" en cada jugador, así que los equipos pueden ser distintos (2 vs 1, 3 vs 2). "+ Agregar otro rival" (u "otro equipo") suma un lado más, hasta 8, y cada lado extra se puede quitar.
+- **Modelo:** los lados 1 y 2 siguen con su primero en `player1_id`/`player2_id`. Los lados 3 en adelante van enteros en `match_teammates` (`side` de 1 a 8). El ganador sigue en `winner_id` (el primero del lado que ganó), y el lado ganador se busca entre todos los lados.
+- **Pantallas:** con más de dos lados, el control muestra la lista de lados y un botón de ganador por cada uno. Las listas y la pantalla de la partida muestran "A vs B vs C" y el formato ("2 vs 1", "1 vs 1 vs 1"). El marcador queda solo para el ping pong de partido y de dos lados.
+- **Disciplina "Juego de mesa"** (`board_game`), sin marcador, para partidas sueltas y mesas.
+- Migración `2026-10-23-lados-y-juegos.sql`: amplía el `side` de `match_teammates` y las disciplinas permitidas. Va **antes del push**.
+- **Pendiente:** probar en producción un 2 vs 1 de pool y un 1 vs 1 vs 1 de juego de mesa. Siguen pendientes los de 6.15: QR de la mesa, clips para los compañeros y "Cargar partido jugado".
+
 ## 7. Próximo paso concreto
 
 **Actualizado 2026-10-18:** Fases 1, 2 y 3 cerradas (lo que queda abierto de la 3, incluido el cobro, en 6.8). Siguiente: Fase 4, arrancando por el paso 1 de 6.9 (bucket privado y links firmados), que ya está en producción y probado. El paso 2 (links firmados por el servidor y descarga según plan) también está en producción y funciona. El paso 3 (publicar y despublicar) también está en producción y probado. El paso 4 (página de clip compartible, `/c/:id`, con vista previa para WhatsApp) también está en producción y probado (6.9). El paso 5 (feed de clips públicos y Reportar) también está en producción y probado (6.9). **Fase 4 cerrada (2026-10-18).** Rediseño visual hecho, en producción y probado (6.10). "Escanear QR" dentro de la app y los íconos para instalarla (6.7) también en producción y probados. En iPhone la cámara del celu sigue abriendo Safari: se escanea desde la app; la app nativa queda para más adelante. Siguiente: la Fase 5.

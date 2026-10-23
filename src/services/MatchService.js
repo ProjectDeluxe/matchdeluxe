@@ -1,7 +1,7 @@
 import { supabase } from "../supabaseClient";
 
-// Disciplinas (ROADMAP 6.13). Pool se juega a ganador, sin marcador (6.15).
-export const DISCIPLINES = { pool: "Pool", ping_pong: "Ping pong" };
+// Disciplinas (ROADMAP 6.13). Pool y juegos de mesa van a ganador, sin marcador (6.15, 6.16).
+export const DISCIPLINES = { pool: "Pool", ping_pong: "Ping pong", board_game: "Juego de mesa" };
 
 // Partido (cuenta para el perfil) o práctica (sin puntos ni ganador), ROADMAP 6.15
 export const MODES = { match: "Partido", practice: "Práctica" };
@@ -37,10 +37,10 @@ export async function getMatchById(id) {
 
 // Crea una partida nueva (mesa opcional: sin mesa queda como partida suelta).
 // En una mesa, la base usa la disciplina de la mesa y no la que viene acá.
-// teammates: el resto de cada equipo, [{ player_id, side: 1 | 2 }].
+// teammates: el resto de cada equipo y los lados 3 en adelante, [{ player_id, side }].
 export async function createMatch(player1_id, player2_id, table = null, discipline = "pool", { mode = "match", teammates = [] } = {}) {
-  // Solo el ping pong de partido lleva marcador
-  const scored = discipline === "ping_pong" && mode === "match";
+  // Solo el ping pong de partido y de dos lados lleva marcador
+  const scored = discipline === "ping_pong" && mode === "match" && !teammates.some((t) => t.side > 2);
   const { data, error } = await supabase
     .from("matches")
     .insert({

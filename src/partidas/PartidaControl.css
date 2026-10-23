@@ -139,3 +139,4 @@
 /* Sin marcador (pool y práctica): el VS va centrado y no tan abajo */
 .ctrl-score-plain .ctrl-vs { margin-top: 20px; }
 .ctrl-team { color: var(--muted); font-size: 0.85rem; text-align: center; overflow-wrap: anywhere; }
+.ctrl-sides { margin: 0; padding: 20px 0 16px 1.4em; display: flex; flex-direction: column; gap: 10px; white-space: normal; }

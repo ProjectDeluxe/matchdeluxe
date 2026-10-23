@@ -79,7 +79,8 @@
   gap: 10px;
 }
 
-/* Nueva partida: un lado (jugador o equipo) y el botón para sumar gente */
+/* Nueva partida: cada lado (jugador o equipo) con sus botones para sumar o quitar gente */
 .side-fieldset { border: none; padding: 0; margin: 0; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
 .side-fieldset legend { padding: 0; margin-bottom: 4px; font-weight: 700; }
-.side-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.slot-label { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.side-add { align-self: flex-start; }

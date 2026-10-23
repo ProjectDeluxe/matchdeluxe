@@ -5,7 +5,7 @@ import { useMatches } from "../context/MatchContext";
 import { supabase } from "../supabaseClient";
 import { usePlan } from "../plan/usePlan";
 import { planLimitMessage } from "../services/PlanService";
-import { isPractice, showsScore, sideIds, sideName, winnerSide } from "./sides";
+import { isPractice, showsScore, sideCount, sideIds, sideName, sideNumbers, winnerSide } from "./sides";
 import "./PartidaControl.css";
 
 export default function PartidaControl() {
@@ -187,7 +187,14 @@ export default function PartidaControl() {
         <span className="ctrl-title">MatchDeluxe</span>
       </div>
 
-      {/* Marcador */}
+      {/* Más de dos lados (1 vs 1 vs 1, juegos de mesa): una lista, sin marcador */}
+      {sideCount(match) > 2 ? (
+        <ol className="ctrl-sides">
+          {sideNumbers(match).map((side) => (
+            <li key={side} className="ctrl-name">{sideName(match, side, nameOf)}</li>
+          ))}
+        </ol>
+      ) : (
       <div className={`ctrl-score${scored ? "" : " ctrl-score-plain"}`}>
         {/* Jugador 1 */}
         <div className="ctrl-player">
@@ -229,6 +236,7 @@ export default function PartidaControl() {
           )}
         </div>
       </div>
+      )}
 
       {/* Ganador */}
       {finished && practice && <div className="ctrl-winner">Práctica terminada</div>}
@@ -311,20 +319,16 @@ export default function PartidaControl() {
           ) : (
             <div className="confirm-end">
               <p className="confirm-label">¿Quién ganó?</p>
-              <button
-                className="action-btn winner-btn"
-                onClick={() => handleFinish(p1?.id)}
-                disabled={finishing}
-              >
-                {sideName(match, 1, nameOf)}
-              </button>
-              <button
-                className="action-btn winner-btn"
-                onClick={() => handleFinish(p2?.id)}
-                disabled={finishing}
-              >
-                {sideName(match, 2, nameOf)}
-              </button>
+              {sideNumbers(match).map((side) => (
+                <button
+                  key={side}
+                  className="action-btn winner-btn"
+                  onClick={() => handleFinish(sideIds(match, side)[0])}
+                  disabled={finishing}
+                >
+                  {sideName(match, side, nameOf)}
+                </button>
+              ))}
               <button
                 className="cancel-btn"
                 onClick={() => setConfirmEnd(false)}

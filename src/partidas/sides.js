@@ -1,34 +1,40 @@
-// Lados de una partida (ROADMAP 6.15). player1_id y player2_id son el primero
-// de cada lado; el resto de cada equipo viene en match.teammates
+// Lados de una partida (ROADMAP 6.15 y 6.16). player1_id y player2_id son el
+// primero de los lados 1 y 2; el resto de cada equipo, y los lados 3 en
+// adelante (1 vs 1 vs 1, juegos de mesa), vienen en match.teammates
 // ({ player_id, side } en las listas, { side, player } en getMatchById).
 
-// Ids de los jugadores de un lado (1 o 2), el primero adelante
+// Cantidad de lados (al menos 2)
+export function sideCount(match) {
+  return Math.max(2, ...(match.teammates ?? []).map((t) => t.side));
+}
+
+// Números de lado: [1, 2, ...]
+export function sideNumbers(match) {
+  return Array.from({ length: sideCount(match) }, (_, i) => i + 1);
+}
+
+// Ids de los jugadores de un lado, el primero adelante
 export function sideIds(match, side) {
-  const first = side === 1 ? match.player1_id : match.player2_id;
+  const first = side === 1 ? match.player1_id : side === 2 ? match.player2_id : null;
   const rest = (match.teammates ?? []).filter((t) => t.side === side).map((t) => t.player_id ?? t.player?.id);
-  return [first, ...rest];
+  return first ? [first, ...rest] : rest;
 }
 
 // Lado de un jugador en la partida, o null si no jugó
 export function sideOf(match, playerId) {
   if (!playerId) return null;
-  if (sideIds(match, 1).includes(playerId)) return 1;
-  if (sideIds(match, 2).includes(playerId)) return 2;
-  return null;
+  return sideNumbers(match).find((side) => sideIds(match, side).includes(playerId)) ?? null;
 }
 
 // Lado que ganó (el ganador guardado es el primero de su equipo)
 export function winnerSide(match) {
-  if (!match.winner_id) return null;
-  if (match.winner_id === match.player1_id) return 1;
-  if (match.winner_id === match.player2_id) return 2;
-  return null;
+  return sideOf(match, match.winner_id);
 }
 
 export const isPractice = (match) => match.mode === "practice";
 
-// Solo el ping pong de partido lleva marcador; pool va a ganador
-export const showsScore = (match) => match.discipline === "ping_pong" && !isPractice(match);
+// Solo el ping pong de partido y de dos lados lleva marcador; el resto va a ganador
+export const showsScore = (match) => match.discipline === "ping_pong" && !isPractice(match) && sideCount(match) === 2;
 
 // "Ana y Beto" con la función que da el nombre de cada id
 export function sideName(match, side, nameOf) {
@@ -36,9 +42,13 @@ export function sideName(match, side, nameOf) {
   return names.length > 1 ? `${names.slice(0, -1).join(", ")} y ${names[names.length - 1]}` : names[0];
 }
 
-// "2 vs 2" en partidas por equipos, null en 1 vs 1
+// "A vs B vs C", salteando un lado (el tuyo) si se pasa `except`
+export function sidesTitle(match, nameOf, except = null) {
+  return sideNumbers(match).filter((side) => side !== except).map((side) => sideName(match, side, nameOf)).join(" vs ");
+}
+
+// "2 vs 1" o "1 vs 1 vs 1"; null en el 1 vs 1 de siempre
 export function formatLabel(match) {
-  const a = sideIds(match, 1).length;
-  const b = sideIds(match, 2).length;
-  return a > 1 || b > 1 ? `${a} vs ${b}` : null;
+  const sizes = sideNumbers(match).map((side) => sideIds(match, side).length);
+  return sizes.length > 2 || sizes.some((n) => n > 1) ? sizes.join(" vs ") : null;
 }

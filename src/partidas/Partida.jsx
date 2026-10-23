@@ -2,7 +2,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import QRCode from "react-qr-code";
 import { getMatchById, DISCIPLINES, MODES } from "../services/MatchService";
-import { formatLabel, isPractice, showsScore, sideName, winnerSide } from "./sides";
+import { formatLabel, isPractice, showsScore, sideName, sideNumbers, winnerSide } from "./sides";
 import { supabase } from "../supabaseClient";
 import "./Partida.css";
 
@@ -53,7 +53,12 @@ export default function Partida() {
       {/* Encabezado */}
       <div className="partida-header">
         <h1 className="partida-title">
-          {sideName(match, 1, nameOf)} <span className="vs">vs</span> {sideName(match, 2, nameOf)}
+          {sideNumbers(match).map((side, i) => (
+            <span key={side}>
+              {i > 0 && <span className="vs">vs</span>}
+              {sideName(match, side, nameOf)}
+            </span>
+          ))}
         </h1>
         <span className="partida-mesa">
           {[match.table?.club?.name, match.table?.label, DISCIPLINES[match.discipline] ?? DISCIPLINES.pool, formatLabel(match), isPractice(match) && MODES.practice].filter(Boolean).join(" · ")}

@@ -11,15 +11,19 @@ import "./Partida.css";
 
 const GUEST = "guest"; // Jugador sin cuenta: se crea como invitado al arrancar
 const AVAILABILITY_LABEL = { closed: "Cerrada", waiting: "Abierta", in_match: "En partida" };
-const MAX_PER_SIDE = 3; // hasta 3 vs 3 (ROADMAP 6.15)
+const MAX_PER_SIDE = 4; // jugadores por equipo (ROADMAP 6.16)
+const MAX_SIDES = 8; // lados: 1 vs 1 vs 1 … para juegos de mesa
 const emptySlot = { id: "", guestName: "" };
 
 // Un lugar de un lado: jugador cargado o invitado con nombre libre
-function PlayerSlot({ label, slot, players, onChange }) {
+function PlayerSlot({ label, slot, players, onChange, onRemove = null }) {
   return (
     <>
       <label className="field">
-        <span>{label}</span>
+        <span className="slot-label">
+          {label}
+          {onRemove && <button type="button" className="link-btn" onClick={onRemove}>Quitar</button>}
+        </span>
         <select value={slot.id} onChange={(e) => onChange({ ...slot, id: e.target.value })} required>
           <option value="">Elegí un jugador</option>
           <option value={GUEST}>Invitado (sin cuenta)</option>
@@ -46,7 +50,7 @@ export default function NuevaPartida() {
   // club, así que también la abre o la cierra.
   const myClubIds = (account?.clubs ?? []).map((c) => c.id);
   const tables = account?.is_admin ? allTables : allTables.filter((t) => myClubIds.includes(t.club_id));
-  // Los dos lados de la partida; con más de uno por lado es por equipos
+  // Los lados de la partida (dos o más); cada uno con uno o más jugadores
   const [sides, setSides] = useState([[{ ...emptySlot, id: account?.player?.id ?? "" }], [emptySlot]]);
   const [mode, setMode] = useState("match");
   const [tableId, setTableId] = useState(""); // "" = partida suelta, sin mesa
@@ -89,7 +93,7 @@ export default function NuevaPartida() {
     }
   }
 
-  const perSide = sides[0].length;
+  const teams = sides.some((side) => side.length > 1);
   const chosen = sides.flat().map((slot) => slot.id).filter((id) => id && id !== GUEST);
   const ready =
     sides.flat().every((slot) => slot.id && (slot.id !== GUEST || slot.guestName.trim())) &&
@@ -99,9 +103,21 @@ export default function NuevaPartida() {
     setSides((prev) => prev.map((s, i) => (i === side ? s.map((x, j) => (j === index ? slot : x)) : s)));
   }
 
-  // Suma o saca un jugador de cada lado (1 vs 1, 2 vs 2, 3 vs 3)
-  function resize(delta) {
-    setSides((prev) => prev.map((s) => (delta > 0 ? [...s, emptySlot] : s.slice(0, -1))));
+  // Cada equipo se arma por separado: 2 vs 1, 3 vs 2, 1 vs 1 vs 1…
+  function addToSide(side) {
+    setSides((prev) => prev.map((s, i) => (i === side ? [...s, emptySlot] : s)));
+  }
+
+  function removeFromSide(side, index) {
+    setSides((prev) => prev.map((s, i) => (i === side ? s.filter((_, j) => j !== index) : s)));
+  }
+
+  function addSide() {
+    setSides((prev) => [...prev, [emptySlot]]);
+  }
+
+  function removeSide(side) {
+    setSides((prev) => prev.filter((_, i) => i !== side));
   }
 
   async function handleStart(e) {
@@ -124,7 +140,8 @@ export default function NuevaPartida() {
         ids.push(sideIds);
       }
       if (createdGuest) reloadPlayers();
-      const teammates = ids.flatMap((sideIds, i) => sideIds.slice(1).map((player_id) => ({ player_id, side: i + 1 })));
+      // Los lados 1 y 2 van con su primero en player1/player2; los demás, enteros en teammates
+      const teammates = ids.flatMap((sideIds, i) => sideIds.slice(i < 2 ? 1 : 0).map((player_id) => ({ player_id, side: i + 1 })));
       const match = await startMatch(ids[0][0], ids[1][0], table, discipline, { mode, teammates });
       // Desde el celu vas directo al control. Desde la PC, a la pantalla con el
       // QR para manejar la partida desde un celu.
@@ -148,31 +165,35 @@ export default function NuevaPartida() {
       <form className="form" onSubmit={handleStart}>
         {sides.map((side, i) => (
           <fieldset key={i} className="side-fieldset">
-            {perSide > 1 && <legend>Equipo {i + 1}</legend>}
+            {(teams || sides.length > 2) && (
+              <legend className="slot-label">
+                {teams ? `Equipo ${i + 1}` : `Jugador ${i + 1}`}
+                {sides.length > 2 && <button type="button" className="link-btn" onClick={() => removeSide(i)}>Quitar</button>}
+              </legend>
+            )}
             {side.map((slot, j) => (
               <PlayerSlot
                 key={j}
-                label={perSide > 1 ? `Jugador ${j + 1}` : `Jugador ${i + 1}`}
+                label={side.length > 1 ? `Jugador ${j + 1}` : teams || sides.length > 2 ? "Jugador" : `Jugador ${i + 1}`}
                 slot={slot}
                 players={players.filter((p) => p.id === slot.id || !chosen.includes(p.id))}
                 onChange={(next) => setSlot(i, j, next)}
+                onRemove={side.length > 1 ? () => removeFromSide(i, j) : null}
               />
             ))}
+            {side.length < MAX_PER_SIDE && (
+              <button type="button" className="link-btn side-add" onClick={() => addToSide(i)}>
+                + Sumar compañero
+              </button>
+            )}
           </fieldset>
         ))}
 
-        <div className="side-actions">
-          {perSide < MAX_PER_SIDE && (
-            <button type="button" className="btn btn-secondary btn-small" onClick={() => resize(1)}>
-              + Sumar jugador por lado
-            </button>
-          )}
-          {perSide > 1 && (
-            <button type="button" className="link-btn" onClick={() => resize(-1)}>
-              Volver a {perSide - 1} vs {perSide - 1}
-            </button>
-          )}
-        </div>
+        {sides.length < MAX_SIDES && (
+          <button type="button" className="btn btn-secondary btn-small side-add" onClick={addSide}>
+            {teams ? "+ Agregar otro equipo" : "+ Agregar otro rival"}
+          </button>
+        )}
 
         <label className="field">
           <span>Tipo</span>
