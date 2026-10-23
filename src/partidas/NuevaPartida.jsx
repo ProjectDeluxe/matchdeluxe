@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import QRCode from "react-qr-code";
 import { usePlayers } from "../context/PlayerContext";
 import { useMatches } from "../context/MatchContext";
-import { getTables, setTableAvailability, setTableDiscipline } from "../services/ClubService";
+import { getTables, setTableAvailability, setTableDiscipline, getPlayerMemberships } from "../services/ClubService";
 import { DISCIPLINES, MODES } from "../services/MatchService";
 import { createGuestPlayer } from "../services/AccountService";
 import { useAuth } from "../context/AuthContext";
@@ -42,14 +42,19 @@ function PlayerSlot({ label, slot, players, onChange, onRemove = null }) {
 
 export default function NuevaPartida() {
   const { players, reloadPlayers } = usePlayers();
-  const { startMatch } = useMatches();
+  const { matches, startMatch } = useMatches();
   const { account } = useAuth();
   const [allTables, setTables] = useState([]);
-  // Partidas en mesa: solo en las de tus clubs (o todas si sos admin). En una
-  // mesa de otro club se arranca escaneando su QR. Quien ve la mesa acá es del
-  // club, así que también la abre o la cierra.
+  const [socioClubIds, setSocioClubIds] = useState([]);
+  // Partidas en mesa: en las de los clubs que manejás (todas si sos admin) y
+  // en las de los clubs donde sos socio (ROADMAP 6.14). En una mesa de otro
+  // club se arranca escaneando su QR. Abrirla, cerrarla y cambiarle la
+  // disciplina es solo de quien maneja el club; el socio arranca ahí si no
+  // hay otra partida en curso (lo controla también la base).
   const myClubIds = (account?.clubs ?? []).map((c) => c.id);
-  const tables = account?.is_admin ? allTables : allTables.filter((t) => myClubIds.includes(t.club_id));
+  const manages = (t) => !!account?.is_admin || myClubIds.includes(t.club_id);
+  const tables = allTables.filter((t) => manages(t) || socioClubIds.includes(t.club_id));
+  const playerId = account?.player?.id;
   // Los lados de la partida (dos o más); cada uno con uno o más jugadores
   const [sides, setSides] = useState([[{ ...emptySlot, id: account?.player?.id ?? "" }], [emptySlot]]);
   const [mode, setMode] = useState("match");
@@ -61,6 +66,8 @@ export default function NuevaPartida() {
   const table = tables.find((t) => t.id === tableId) ?? null;
   // En una mesa manda la disciplina de la mesa (también para quien entra por el QR)
   const discipline = table ? table.discipline ?? "pool" : looseDiscipline;
+  const canManageTable = !!table && manages(table);
+  const tableBusy = !!table && matches.some((m) => m.table_id === table.id && m.status === "active");
 
   function loadTables() {
     return getTables().then(setTables).catch(() => setTables([]));
@@ -69,6 +76,13 @@ export default function NuevaPartida() {
   useEffect(() => {
     loadTables();
   }, []);
+
+  useEffect(() => {
+    if (!playerId) return;
+    getPlayerMemberships(playerId)
+      .then((rows) => setSocioClubIds(rows.filter((m) => m.status === "active").map((m) => m.club_id)))
+      .catch(() => setSocioClubIds([]));
+  }, [playerId]);
 
   async function handleToggleOpen() {
     const next = table.availability === "closed" ? "waiting" : "closed";
@@ -224,12 +238,16 @@ export default function NuevaPartida() {
 
         <label className="field">
           <span>Disciplina</span>
-          <select value={discipline} onChange={(e) => handleDiscipline(e.target.value)}>
+          <select value={discipline} onChange={(e) => handleDiscipline(e.target.value)} disabled={!!table && !canManageTable}>
             {Object.entries(DISCIPLINES).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
           </select>
         </label>
 
-        {table && (
+        {table && !canManageTable && tableBusy && (
+          <p className="error">Ya hay una partida en curso en {table.label}. Esperá a que termine.</p>
+        )}
+
+        {canManageTable && (
           <div className="qr-section">
             <p className="qr-label">
               {AVAILABILITY_LABEL[table.availability] ?? table.availability}
@@ -251,7 +269,7 @@ export default function NuevaPartida() {
         )}
 
         {error && <p className="error">{error}</p>}
-        <button className="btn btn-block" type="submit" disabled={busy || !ready}>
+        <button className="btn btn-block" type="submit" disabled={busy || !ready || (!canManageTable && tableBusy)}>
           {busy ? "Arrancando…" : "Arrancar partida"}
         </button>
       </form>
