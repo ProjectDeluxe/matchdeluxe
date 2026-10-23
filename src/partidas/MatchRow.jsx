@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { DISCIPLINES, MODES } from "../services/MatchService";
-import { formatLabel, isPractice, showsScore, sideOf, sidesTitle, winnerSide } from "./sides";
+import { formatLabel, isPractice, showsScore, sideCount, sideOf, sidesTitle, winnerSide } from "./sides";
 
 function shortDate(iso) {
   if (!iso) return "";
@@ -41,7 +41,7 @@ export default function MatchRow({ match: m, nameOf, me = null }) {
         ) : null}
         <span className="list-row-main">
           <span className="list-row-title">
-            {mine ? `vs ${sidesTitle(m, nameOf, mySide)}` : sidesTitle(m, nameOf)}
+            {mine && sideCount(m) > 1 ? `vs ${sidesTitle(m, nameOf, mySide)}` : sidesTitle(m, nameOf)}
           </span>
           {sub.length > 0 && (
             <span className="list-row-sub">

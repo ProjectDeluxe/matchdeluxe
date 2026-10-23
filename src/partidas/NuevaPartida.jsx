@@ -94,8 +94,11 @@ export default function NuevaPartida() {
   }
 
   const teams = sides.some((side) => side.length > 1);
+  // En práctica se puede jugar sin rival (ROADMAP 6.17); un partido necesita al menos dos lados
+  const minSides = mode === "practice" ? 1 : 2;
   const chosen = sides.flat().map((slot) => slot.id).filter((id) => id && id !== GUEST);
   const ready =
+    sides.length >= minSides &&
     sides.flat().every((slot) => slot.id && (slot.id !== GUEST || slot.guestName.trim())) &&
     new Set(chosen).size === chosen.length;
 
@@ -114,6 +117,12 @@ export default function NuevaPartida() {
 
   function addSide() {
     setSides((prev) => [...prev, [emptySlot]]);
+  }
+
+  // Al volver a Partido desde una práctica en solitario, vuelve el lugar del rival
+  function changeMode(next) {
+    setMode(next);
+    if (next === "match") setSides((prev) => (prev.length < 2 ? [...prev, [emptySlot]] : prev));
   }
 
   function removeSide(side) {
@@ -142,7 +151,7 @@ export default function NuevaPartida() {
       if (createdGuest) reloadPlayers();
       // Los lados 1 y 2 van con su primero en player1/player2; los demás, enteros en teammates
       const teammates = ids.flatMap((sideIds, i) => sideIds.slice(i < 2 ? 1 : 0).map((player_id) => ({ player_id, side: i + 1 })));
-      const match = await startMatch(ids[0][0], ids[1][0], table, discipline, { mode, teammates });
+      const match = await startMatch(ids[0][0], ids[1]?.[0] ?? null, table, discipline, { mode, teammates });
       // Desde el celu vas directo al control. Desde la PC, a la pantalla con el
       // QR para manejar la partida desde un celu.
       const mobile = window.matchMedia("(pointer: coarse)").matches;
@@ -165,16 +174,16 @@ export default function NuevaPartida() {
       <form className="form" onSubmit={handleStart}>
         {sides.map((side, i) => (
           <fieldset key={i} className="side-fieldset">
-            {(teams || sides.length > 2) && (
+            {(teams || sides.length !== 2) && (
               <legend className="slot-label">
                 {teams ? `Equipo ${i + 1}` : `Jugador ${i + 1}`}
-                {sides.length > 2 && <button type="button" className="link-btn" onClick={() => removeSide(i)}>Quitar</button>}
+                {sides.length > minSides && i > 0 && <button type="button" className="link-btn" onClick={() => removeSide(i)}>Quitar</button>}
               </legend>
             )}
             {side.map((slot, j) => (
               <PlayerSlot
                 key={j}
-                label={side.length > 1 ? `Jugador ${j + 1}` : teams || sides.length > 2 ? "Jugador" : `Jugador ${i + 1}`}
+                label={side.length > 1 ? `Jugador ${j + 1}` : teams || sides.length !== 2 ? "Jugador" : `Jugador ${i + 1}`}
                 slot={slot}
                 players={players.filter((p) => p.id === slot.id || !chosen.includes(p.id))}
                 onChange={(next) => setSlot(i, j, next)}
@@ -197,11 +206,11 @@ export default function NuevaPartida() {
 
         <label className="field">
           <span>Tipo</span>
-          <select value={mode} onChange={(e) => setMode(e.target.value)}>
+          <select value={mode} onChange={(e) => changeMode(e.target.value)}>
             {Object.entries(MODES).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
           </select>
         </label>
-        {mode === "practice" && <p className="muted">Sin puntos ni ganador: queda en el historial pero no suma a las estadísticas.</p>}
+        {mode === "practice" && <p className="muted">Sin puntos ni ganador: queda en el historial pero no suma a las estadísticas. Podés quitar al rival para practicar solo.</p>}
 
         {tables.length > 0 && (
           <label className="field">

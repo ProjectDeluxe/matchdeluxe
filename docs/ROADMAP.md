@@ -580,6 +580,13 @@ Fase 3 cerrada: planes y límites (6.3), modelo de cuentas (6.4), vivo y repetic
 - Migración `2026-10-23-lados-y-juegos.sql`: amplía el `side` de `match_teammates` y las disciplinas permitidas. Va **antes del push**.
 - **Pendiente:** probar en producción un 2 vs 1 de pool y un 1 vs 1 vs 1 de juego de mesa. Siguen pendientes los de 6.15: QR de la mesa, clips para los compañeros y "Cargar partido jugado".
 
+### 6.17 Práctica en solitario (2026-10-23)
+
+- **Pedido de Agus:** jugar de a uno, sin rival. Hasta ahora había que crear partidas contra un jugador inventado.
+- **Qué se hizo:** en Nueva partida, con Tipo "Práctica", el rival (y cualquier lado que no sea el primero) tiene "Quitar", así queda una sola persona o un solo equipo. Si se vuelve a "Partido", el lugar del rival vuelve solo. La partida se guarda con `player2_id` vacío y `mode = 'practice'`. Se ve como "Solo · Práctica", el control muestra solo ese lado, con repetición y clips como siempre, y se termina con "Terminar práctica". No cuenta en el perfil.
+- **Sin migración:** la base ya aceptaba partidas sin jugador 2.
+- **Pendiente:** el título de un clip de práctica en solitario en la página pública puede mostrar "vs Jugador 2"; revisarlo junto con los clips para compañeros (6.15).
+
 ## 7. Próximo paso concreto
 
 **Actualizado 2026-10-18:** Fases 1, 2 y 3 cerradas (lo que queda abierto de la 3, incluido el cobro, en 6.8). Siguiente: Fase 4, arrancando por el paso 1 de 6.9 (bucket privado y links firmados), que ya está en producción y probado. El paso 2 (links firmados por el servidor y descarga según plan) también está en producción y funciona. El paso 3 (publicar y despublicar) también está en producción y probado. El paso 4 (página de clip compartible, `/c/:id`, con vista previa para WhatsApp) también está en producción y probado (6.9). El paso 5 (feed de clips públicos y Reportar) también está en producción y probado (6.9). **Fase 4 cerrada (2026-10-18).** Rediseño visual hecho, en producción y probado (6.10). "Escanear QR" dentro de la app y los íconos para instalarla (6.7) también en producción y probados. En iPhone la cámara del celu sigue abriendo Safari: se escanea desde la app; la app nativa queda para más adelante. Siguiente: la Fase 5.

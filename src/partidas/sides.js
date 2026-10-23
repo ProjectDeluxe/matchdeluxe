@@ -3,9 +3,15 @@
 // adelante (1 vs 1 vs 1, juegos de mesa), vienen en match.teammates
 // ({ player_id, side } en las listas, { side, player } en getMatchById).
 
-// Cantidad de lados (al menos 2)
+// Cantidad de lados: al menos 2, salvo la práctica en solitario (sin lado 2, ROADMAP 6.17)
 export function sideCount(match) {
-  return Math.max(2, ...(match.teammates ?? []).map((t) => t.side));
+  const count = Math.max(2, ...(match.teammates ?? []).map((t) => t.side));
+  return count === 2 && isSolo(match) ? 1 : count;
+}
+
+// Práctica de una sola persona o un solo equipo: sin rival
+export function isSolo(match) {
+  return isPractice(match) && !match.player2_id && !(match.teammates ?? []).some((t) => t.side >= 2);
 }
 
 // Números de lado: [1, 2, ...]
@@ -47,8 +53,9 @@ export function sidesTitle(match, nameOf, except = null) {
   return sideNumbers(match).filter((side) => side !== except).map((side) => sideName(match, side, nameOf)).join(" vs ");
 }
 
-// "2 vs 1" o "1 vs 1 vs 1"; null en el 1 vs 1 de siempre
+// "2 vs 1", "1 vs 1 vs 1" o "Solo"; null en el 1 vs 1 de siempre
 export function formatLabel(match) {
+  if (sideCount(match) === 1) return "Solo";
   const sizes = sideNumbers(match).map((side) => sideIds(match, side).length);
   return sizes.length > 2 || sizes.some((n) => n > 1) ? sizes.join(" vs ") : null;
 }

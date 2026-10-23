@@ -187,8 +187,8 @@ export default function PartidaControl() {
         <span className="ctrl-title">MatchDeluxe</span>
       </div>
 
-      {/* Más de dos lados (1 vs 1 vs 1, juegos de mesa): una lista, sin marcador */}
-      {sideCount(match) > 2 ? (
+      {/* Más de dos lados (1 vs 1 vs 1, juegos de mesa) o práctica en solitario: una lista, sin marcador */}
+      {sideCount(match) !== 2 ? (
         <ol className="ctrl-sides">
           {sideNumbers(match).map((side) => (
             <li key={side} className="ctrl-name">{sideName(match, side, nameOf)}</li>
