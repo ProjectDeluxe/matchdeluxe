@@ -391,6 +391,7 @@ Por qué el código y no el ZIP: el token nunca queda en un archivo que se pueda
 - Cartelería y consentimiento legal para clubes reales (se filma a la gente).
 - Vista de todas las mesas desde una PC maestra.
 - Edición automática con IA del partido completo.
+- **Aviso para instalar en iPhone (Agus, 2026-10-22, prioridad baja):** un cartel solo en iPhone/iPad con Safari, y no si ya está instalada (`navigator.standalone` o `display-mode: standalone`): "Tocá Compartir > Agregar a inicio". Se puede cerrar y se recuerda (localStorage).
 - **Partido completo y editor de mejores momentos (propuesta, Agus 2026-10-19, para después de la Fase 5):**
   - El agente le pide a OBS que grabe desde que se abre la partida hasta que se cierra. El crudo en buena calidad (aprox. 1,2 GB por hora a 720p30 con codificador de hardware) queda en el disco de la PC de la mesa y no se sube.
   - Se sube una versión liviana en 480p (aprox. 0,3 GB por hora) para mirarla en la app, y se borra a las 48 h. Referencia: Supabase Pro trae unos 100 GB de almacenamiento y 250 GB de descarga (precios a confirmar); lo que más pesa es la descarga cuando la gente mira.
@@ -593,6 +594,17 @@ Fase 3 cerrada: planes y límites (6.3), modelo de cuentas (6.4), vivo y repetic
 - **Qué se hizo:** en Nueva partida, con Tipo "Práctica", el rival (y cualquier lado que no sea el primero) tiene "Quitar", así queda una sola persona o un solo equipo. Si se vuelve a "Partido", el lugar del rival vuelve solo. La partida se guarda con `player2_id` vacío y `mode = 'practice'`. Se ve como "Solo · Práctica", el control muestra solo ese lado, con repetición y clips como siempre, y se termina con "Terminar práctica". No cuenta en el perfil.
 - **Sin migración:** la base ya aceptaba partidas sin jugador 2.
 - **Pendiente:** el título de un clip de práctica en solitario en la página pública puede mostrar "vs Jugador 2"; revisarlo junto con los clips para compañeros (6.15).
+
+### 6.18 Actualización en vivo de la app (propuesta, Agus 2026-10-23, pendiente)
+
+- **Problema:** si alguien tiene la app abierta y otro arranca o termina una partida, no se entera hasta cerrar y abrir la app. Hoy solo la pantalla de una partida (`Partida.jsx`, `PartidaControl.jsx`) escucha cambios por Realtime; las listas de partidas (Inicio, club, perfil, `MatchContext`) se cargan una sola vez. Con muchos usuarios a la vez esto pega en varias pantallas.
+- **Propuesta, en tres capas:**
+  1. **Realtime:** escuchar cambios en `matches` y `club_players` (alta, cambio) y recargar la lista que corresponda en 1 o 2 segundos. Realtime respeta RLS, así que cada uno recibe solo lo que ya puede ver. Puede hacer falta agregar `club_players` a la publicación de Realtime (migración de una línea).
+  2. **Recarga al volver a la app:** en el celu el sistema corta la conexión cuando la app queda en segundo plano; al volver (`visibilitychange`) o cuando vuelve internet, recargar todo.
+  3. **Respaldo:** recargar cada 60 s solo mientras la app está en pantalla, por si se cae Realtime.
+- **Costo:** el plan free de Supabase permite 200 conexiones simultáneas de Realtime (una por app abierta); alcanza para probar. Para clubes reales, plan pago (ver 9).
+- **Alcance:** una función compartida + `MatchContext` y las pantallas que cargan partidas o socios. Cambio chico.
+- **Después, sobre esto:** invitar a una partida con "¿Aceptás iniciar partida?": tabla de invitaciones (pendiente/aceptada/rechazada) y un cartel que le aparece solo al otro. Anda con la app abierta; con la app cerrada harían falta notificaciones push (en iPhone solo con la app instalada). Se puede sumar el número en la barra de navegación de 6.14.
 
 ## 7. Próximo paso concreto
 
