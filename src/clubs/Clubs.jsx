@@ -7,6 +7,7 @@ import { addClubMemberByPhone, createMyClub, logMatchResult } from "../services/
 import { useAuth } from "../context/AuthContext";
 import { Link } from "react-router-dom";
 import { useMatches } from "../context/MatchContext";
+import { useLiveReload } from "../context/useLiveReload";
 import "./Clubs.css";
 
 // Partido ya jugado, sin mesa ni cámara (solo socios del club)
@@ -164,6 +165,9 @@ export default function Clubs() {
   useEffect(() => {
     if (visibleKey) loadSocios(visibleKey.split(","));
   }, [visibleKey]);
+
+  // Pedidos para sumarse y aceptaciones aparecen sin recargar (6.18)
+  useLiveReload(["club_players"], () => loadSocios(visibleKey.split(",")), { enabled: !!visibleKey });
 
   async function handleSociosAction(clubId, action) {
     try {

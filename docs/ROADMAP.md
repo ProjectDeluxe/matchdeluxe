@@ -595,7 +595,7 @@ Fase 3 cerrada: planes y límites (6.3), modelo de cuentas (6.4), vivo y repetic
 - **Sin migración:** la base ya aceptaba partidas sin jugador 2.
 - **Pendiente:** el título de un clip de práctica en solitario en la página pública puede mostrar "vs Jugador 2"; revisarlo junto con los clips para compañeros (6.15).
 
-### 6.18 Actualización en vivo de la app (propuesta, Agus 2026-10-23, pendiente)
+### 6.18 Actualización en vivo de la app (propuesta, Agus 2026-10-23; hecho 2026-10-26)
 
 - **Problema:** si alguien tiene la app abierta y otro arranca o termina una partida, no se entera hasta cerrar y abrir la app. Hoy solo la pantalla de una partida (`Partida.jsx`, `PartidaControl.jsx`) escucha cambios por Realtime; las listas de partidas (Inicio, club, perfil, `MatchContext`) se cargan una sola vez. Con muchos usuarios a la vez esto pega en varias pantallas.
 - **Propuesta, en tres capas:**
@@ -605,6 +605,15 @@ Fase 3 cerrada: planes y límites (6.3), modelo de cuentas (6.4), vivo y repetic
 - **Costo:** el plan free de Supabase permite 200 conexiones simultáneas de Realtime (una por app abierta); alcanza para probar. Para clubes reales, plan pago (ver 9).
 - **Alcance:** una función compartida + `MatchContext` y las pantallas que cargan partidas o socios. Cambio chico.
 - **Después, sobre esto:** invitar a una partida con "¿Aceptás iniciar partida?": tabla de invitaciones (pendiente/aceptada/rechazada) y un cartel que le aparece solo al otro. Anda con la app abierta; con la app cerrada harían falta notificaciones push (en iPhone solo con la app instalada). Se puede sumar el número en la barra de navegación de 6.14.
+- **Qué se hizo (2026-10-26):**
+  - `src/context/useLiveReload.js`: una función compartida con las tres capas. Junta los cambios seguidos en una sola recarga (1,5 s), recarga al volver a la app o cuando vuelve internet, y cada 60 s solo con la app en pantalla.
+  - **Partidas** (`MatchContext`: Inicio, Partida, perfiles, club): una partida nueva o borrada recarga la lista; un punto o un cambio de estado se aplica sobre la partida que ya está en pantalla, sin volver a pedir todo, así una partida en curso no hace recargar la lista con cada punto.
+  - **Jugadores** (`PlayerContext`): un jugador nuevo (por ejemplo, un invitado creado en otra mesa) aparece solo, sin quedar como "Jugador".
+  - **Socios** (`club_players`): Mi club, Perfil, el perfil de un jugador y la página pública del club se actualizan solos con pedidos, invitaciones y aceptaciones.
+  - Las listas ya no vuelven a mostrar "Cargando…" al recargarse; solo la primera vez.
+  - Migración `supabase/migrations/2026-10-26-actualizacion-en-vivo.sql` (idempotente, también al final de `supabase-schema.sql`): suma `players` y `club_players` a la publicación de Realtime.
+- **Para pasar a producción:** correr la migración antes o después del push (sin ella la app anda igual, pero jugadores y socios se actualizan recién al volver a la app o a los 60 s).
+- **Pendiente:** probar con dos celus: uno arranca y termina una partida, el otro la ve aparecer y cerrarse sin recargar; un club invita a un socio y el socio ve la invitación sola. Ojo con el consumo: hoy cada app abierta recibe los cambios de todas las partidas y recarga la lista entera cada 60 s; con la RLS por club de la Fase 5 cada uno va a recibir y bajar solo lo suyo.
 
 ### 6.19 Grabación sin OBS, partida entera, sin internet y personalización del club (decidido con Agus, 2026-10-26, pendiente)
 

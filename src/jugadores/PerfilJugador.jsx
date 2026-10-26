@@ -11,6 +11,7 @@ import { isPractice, sideOf, winnerSide } from "../partidas/sides";
 import Avatar from "../components/Avatar.jsx";
 import { usePlan } from "../plan/usePlan";
 import { useAuth } from "../context/AuthContext";
+import { useLiveReload } from "../context/useLiveReload";
 import { ClipsIcon, HistoryIcon, SettingsIcon } from "../components/Icons.jsx";
 import "./PerfilJugador.css";
 
@@ -31,6 +32,8 @@ function ClubInvites({ player }) {
     if (!show) return;
     getPlayerMemberships(player.id).then(setMemberships).catch(() => setMemberships([]));
   }, [player.id, show]);
+
+  useLiveReload(["club_players"], () => getPlayerMemberships(player.id).then(setMemberships), { enabled: show });
 
   if (!show) return null;
   if (memberships === null) return <p className="loading">Cargando clubs…</p>;

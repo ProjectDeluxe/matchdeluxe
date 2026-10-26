@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { getPlayers, createPlayer, updatePlayer, deletePlayer } from "../services/PlayerService";
+import { useLiveReload } from "./useLiveReload";
 
 const PlayerContext = createContext();
 
@@ -8,7 +9,6 @@ export function PlayerProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   async function loadPlayers() {
-    setLoading(true);
     const data = await getPlayers();
     setPlayers(data);
     setLoading(false);
@@ -35,6 +35,9 @@ async function addPlayer(name, avatar_url = null, fields = {}) {
   useEffect(() => {
     loadPlayers();
   }, []);
+
+  // Jugadores nuevos (por ejemplo, un invitado creado en otra mesa) aparecen solos (6.18)
+  useLiveReload(["players"], loadPlayers);
 
   return (
     <PlayerContext.Provider value={{ players, loading, addPlayer, editPlayer, removePlayer, reloadPlayers: loadPlayers }}>

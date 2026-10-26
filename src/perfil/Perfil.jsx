@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { useLiveReload } from "../context/useLiveReload";
 import { usePlan } from "../plan/usePlan";
 import { getPlayerMemberships, acceptClubMembership, removeClubMembership } from "../services/ClubService";
 import { PlayerProfile } from "../jugadores/PerfilJugador.jsx";
@@ -62,6 +63,7 @@ export default function Perfil() {
   }
 
   useEffect(loadMemberships, [playerId]);
+  useLiveReload(["club_players"], loadMemberships, { enabled: !!playerId });
 
   const invitations = memberships.filter((m) => m.status === "pending" && m.requested_by === "club");
   const socioDe = memberships.filter((m) => m.status === "active");

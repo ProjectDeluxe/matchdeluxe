@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { getClubs, getClubPlayers, requestJoinClub, acceptClubMembership, removeClubMembership } from "../services/ClubService";
 import { getFeed } from "../services/ClipService";
 import { useAuth } from "../context/AuthContext";
+import { useLiveReload } from "../context/useLiveReload";
 import { usePlan } from "../plan/usePlan";
 import Avatar from "../components/Avatar.jsx";
 import ClipList from "../clips/ClipList.jsx";
@@ -33,6 +34,8 @@ export default function ClubPublico() {
   useEffect(() => {
     getClubPlayers(id).then(setMemberships).catch(() => setMemberships([]));
   }, [id]);
+
+  useLiveReload(["club_players"], () => getClubPlayers(id).then(setMemberships));
 
   useEffect(() => {
     // El feed de clips públicos pide cuenta real (Fase 4, paso 5)

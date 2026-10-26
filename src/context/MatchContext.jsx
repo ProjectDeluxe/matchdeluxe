@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { createMatch, setMatchWinner, getMatches } from "../services/MatchService";
+import { useLiveReload } from "./useLiveReload";
 
 const MatchContext = createContext();
 
@@ -7,8 +8,8 @@ export function MatchProvider({ children }) {
   const [matches, setMatches] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // Sin volver a poner "Cargando…": la lista se recarga sola en segundo plano (6.18)
   async function loadMatches() {
-    setLoading(true);
     const data = await getMatches();
     setMatches(data);
     setLoading(false);
@@ -28,6 +29,11 @@ export function MatchProvider({ children }) {
   useEffect(() => {
     loadMatches();
   }, []);
+
+  // Un punto o un cambio de estado se aplica sobre la partida que ya está; altas y bajas recargan
+  useLiveReload(["matches"], loadMatches, {
+    patch: (row) => setMatches((ms) => ms.map((m) => (m.id === row.id ? { ...m, ...row } : m))),
+  });
 
   return (
     <MatchContext.Provider

@@ -1587,3 +1587,10 @@ END;
 $$;
 
 GRANT EXECUTE ON FUNCTION is_club_socio(UUID) TO authenticated;
+
+-- ============================================================
+-- 6.18 — La app se actualiza sola (migración 2026-10-26-actualizacion-en-vivo.sql)
+-- players y club_players entran a Realtime (matches ya estaba)
+-- ============================================================
+ALTER PUBLICATION supabase_realtime ADD TABLE players;
+ALTER PUBLICATION supabase_realtime ADD TABLE club_players;
