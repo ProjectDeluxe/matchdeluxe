@@ -33,7 +33,7 @@ export default function ClipPublico() {
             poster={clip.thumbnail_url ?? undefined}
             controls
             playsInline
-            preload="metadata"
+            preload="none"
             controlsList="nodownload"
           />
           <div className="clip-head-text">

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { deleteClip, getClipDownloadUrl, reportClip, setClipPublic } from "../services/ClipService";
 import { DownloadIcon, FlagIcon, GlobeIcon, ShareIcon, TrashIcon } from "../components/Icons.jsx";
@@ -154,33 +154,15 @@ export function ReportButton({ clipId }) {
   return <Action icon={<FlagIcon />} label="Reportar" onClick={report} disabled={state === "loading"} />;
 }
 
-// Video que se reproduce solo (sin sonido) cuando está a la vista, como un feed.
-function AutoplayVideo({ clip }) {
-  const ref = useRef(null);
-
-  useEffect(() => {
-    const video = ref.current;
-    if (!video || !("IntersectionObserver" in window)) return;
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) video.play().catch(() => {});
-        else video.pause();
-      },
-      { threshold: 0.6 }
-    );
-    observer.observe(video);
-    return () => observer.disconnect();
-  }, []);
-
+// El video se baja recién cuando alguien toca play: hasta entonces solo se ve la
+// miniatura. Así el feed no gasta descarga de Supabase por los clips que se pasan.
+function ClipVideo({ clip }) {
   return (
     <video
-      ref={ref}
       className="clip-video"
       src={clip.video_url}
       poster={clip.thumbnail_url ?? undefined}
       controls
-      muted
-      loop
       playsInline
       preload="none"
     />
@@ -216,7 +198,7 @@ function ClipPost({ clip, canDownload, canReport, isMine, onChange }) {
       {clip.expired_at ? (
         <div className="clip-placeholder">Este clip venció</div>
       ) : playable ? (
-        <AutoplayVideo clip={clip} />
+        <ClipVideo clip={clip} />
       ) : (
         <div className={`clip-placeholder${clip.status === "error" ? " clip-placeholder-error" : ""}`}>
           {clip.status === "error" ? "No se pudo guardar" : "Procesando…"}

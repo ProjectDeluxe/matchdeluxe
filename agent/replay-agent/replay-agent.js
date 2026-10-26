@@ -425,39 +425,40 @@ function trimLastSeconds(inputPath, seconds, outputPath) {
   });
 }
 
-// Recorte para un clip que se guarda al perfil. Primero se copia el video tal cual
-// sale de OBS (sin recodificar): tarda menos de un segundo y casi no usa CPU, así
-// OBS no pierde fotogramas mientras se procesa. Para que el corte arranque limpio,
-// OBS tiene que grabar con intervalo de fotogramas clave de 1s. Si la copia pesa
-// más de lo que acepta Storage (50 MB por defecto), se recodifica a 720p.
+// Recorte para un clip que se guarda al perfil. Siempre se recodifica a 720p y
+// ~600 kbps (un clip de 60 s pesa unos 3 a 5 MB): copiar el video de OBS tal cual
+// daba ~0,65 MB por segundo y la descarga de Supabase se disparaba (ROADMAP 6.20).
+// Primero prueba con QuickSync (el chip de video de Intel), que casi no usa CPU y
+// OBS no pierde fotogramas; si esa PC no tiene QuickSync, usa x264 en la CPU.
 // "+faststart" hace que el navegador pueda empezar a reproducirlo sin bajarlo entero.
-const CLIP_MAX_MB = 45;
+const CLIP_AUDIO_ARGS = ["-c:a", "aac", "-b:a", "96k", "-movflags", "+faststart"];
+const CLIP_ENCODERS = [
+  { name: "QuickSync", args: ["-c:v", "h264_qsv", "-b:v", "600k", "-maxrate", "900k", "-bufsize", "1200k"] },
+  { name: "x264", args: ["-c:v", "libx264", "-preset", "veryfast", "-crf", "28"] },
+];
 
 async function trimClipForUpload(inputPath, seconds, outputPath) {
-  await runFfmpeg([
-    "-y",
-    "-sseof", `-${seconds}`,
-    "-i", inputPath,
-    "-c", "copy",
-    "-movflags", "+faststart",
-    outputPath,
-  ]);
-  if (fs.statSync(outputPath).size / 1024 / 1024 <= CLIP_MAX_MB) return;
-
-  console.log("⚠️  El clip pesa demasiado copiado tal cual, lo recodifico a 720p...");
-  await runFfmpeg([
-    "-y",
-    "-sseof", `-${seconds}`,
-    "-i", inputPath,
-    "-vf", "scale=-2:720",
-    "-c:v", "libx264",
-    "-preset", "veryfast",
-    "-crf", "26",
-    "-c:a", "aac",
-    "-b:a", "128k",
-    "-movflags", "+faststart",
-    outputPath,
-  ]);
+  let lastErr;
+  for (const encoder of CLIP_ENCODERS) {
+    try {
+      await runFfmpeg([
+        "-y",
+        "-sseof", `-${seconds}`,
+        "-i", inputPath,
+        "-vf", "scale=-2:720",
+        ...encoder.args,
+        ...CLIP_AUDIO_ARGS,
+        outputPath,
+      ]);
+      const sizeMb = (fs.statSync(outputPath).size / 1024 / 1024).toFixed(1);
+      console.log(`🎞️  Clip recodificado con ${encoder.name}: ${sizeMb} MB`);
+      return;
+    } catch (err) {
+      lastErr = err;
+      console.log(`⚠️  No pude recodificar con ${encoder.name}, pruebo con el siguiente...`);
+    }
+  }
+  throw lastErr;
 }
 
 function makeThumbnail(videoPath, outputPath) {

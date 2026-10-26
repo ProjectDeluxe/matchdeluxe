@@ -529,7 +529,7 @@ Fase 3 cerrada: planes y límites (6.3), modelo de cuentas (6.4), vivo y repetic
 - **Qué se encontró:** en la PC de la mesa los clips salían a ~1 fps, el primero tardó todo el partido en subirse y una repetición tardó 103 s en guardarse. Las estadísticas de OBS marcaban un 70 % de fotogramas omitidos por retraso en la codificación: OBS grababa a 60 fps con un codificador que no daba abasto, y el agente además recodificaba cada clip con x264 en la CPU al mismo tiempo, sin fila (varios ffmpeg a la vez).
 - **Qué se hizo en el agente:** los clips se cortan copiando el video de OBS sin recodificar (si pasan de 45 MB se recodifican a 720p como antes), se procesan de a uno en fila sin frenar la repetición, y ffmpeg corre con prioridad baja.
 - **Configuración de OBS en la mesa:** codificador de hardware, 1280x720 a 30 fps, intervalo de fotogramas clave 1 s, Replay Buffer en 65 s (README del agente actualizado).
-- **Pendiente:** probar en la mesa con la configuración nueva de OBS y el agente actualizado; confirmar fotogramas omitidos cerca de 0 % y el peso de un clip de 60 s.
+- **Probado (2026-10-19):** OBS guarda el buffer en 1,1 s, la repetición sale en la tele en 0,1 a 0,2 s y los clips copiados pesan aprox. 0,65 MB por segundo. Ese peso terminó disparando el consumo de Supabase: ver 6.20, que vuelve a recodificar los clips.
 
 ### 6.13 Mesa e invitado desde Nueva partida (2026-10-19)
 
@@ -621,6 +621,18 @@ Fase 3 cerrada: planes y límites (6.3), modelo de cuentas (6.4), vivo y repetic
 - **Privacidad:** los clips ya son privados desde la Fase 4. Para poder venderla, falta filtrar por club en la base las partidas y los jugadores (RLS, Fase 5).
 - **Pendiente antes de instalar:** la cancha necesita enchufe para la PC, la cámara y la tele. Para cantar piques en la línea la cámara tiene que estar alineada con la línea; una sola cámara general sirve para ver jugadas, pero no siempre alcanza para un pique justo en la línea.
 - **Orden propuesto:** (1) agente con cámara IP + ffmpeg y repetición local con disparador Bluetooth; (2) cola de subida cuando vuelve internet; (3) modo VAR para dueño y staff; (4) partida entera en R2 con borrado a 3 días, marcadores (sugeridos por audio) y clips desde marcadores; (5) colores y logo del club; (6) marcador offline.
+
+### 6.20 Consumo de Supabase (2026-10-26)
+
+- **Aviso:** llegó un mail de Supabase por uso justo (Fair Use): la descarga desde la caché (Cached Egress) pasó el límite del plan gratis. Hay que bajarla a menos de 5,5 GB antes del 2026-11-25.
+- **Qué se encontró:** el bucket `clips` tiene 18 clips que suman 435 MB (24 MB en promedio). Desde 6.12 el agente sube los clips copiados tal cual salen de OBS (aprox. 0,65 MB por segundo); antes, recodificados a 720p, pesaban aprox. 2,6 MB por minuto. Además, el feed de Inicio reproducía solo cada clip que aparecía en pantalla, y como los links firmados cambian cada hora, el navegador no reutiliza lo que ya bajó y vuelve a bajar el video entero.
+- **Qué se hizo en el agente:** cada clip que se guarda al perfil se recodifica siempre a 720p, video de aprox. 600 kbps y audio AAC de 96 kbps, con `+faststart`. Primero prueba con QuickSync (`h264_qsv`, casi no usa CPU); si la PC no lo tiene, usa x264 `veryfast` CRF 28. Sigue la prioridad baja de ffmpeg, la fila de a un clip y el `-sseof`. Se sacó la copia sin recodificar. El agente anota en la consola el peso de cada clip. Objetivo: un clip de 60 s de 3 a 5 MB.
+- **Qué se hizo en la app:** los videos de clips (feed de Inicio, clips del perfil y del club, y la página `/c/:id`) ya no se reproducen solos: `preload="none"`, sin autoplay, con la miniatura como póster. El video se baja recién cuando alguien toca play. Se sacó el IntersectionObserver del feed. La firma de los links no cambió.
+- **Pendiente:**
+  - Actualizar el agente en la PC de la mesa (bajarlo de nuevo y `npm install`), medir el peso de un clip real de 60 s y mirar en OBS que los fotogramas omitidos sigan cerca de 0 %, y si salió con QuickSync o con x264.
+  - En unos días, revisar en Supabase Usage → Cached Egress que el consumo bajó.
+  - Opcional: recomprimir los 18 clips que ya están en el bucket.
+  - Si el uso crece: pasar el video a Cloudflare R2 (no cobra la descarga, ver 6.19), contra pagar Supabase Pro a US$25 por mes.
 
 ## 7. Próximo paso concreto
 
