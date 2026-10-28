@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { DISCIPLINES, MODES } from "../services/MatchService";
-import { formatLabel, isPractice, showsScore, sideCount, sideOf, sidesTitle, winnerSide } from "./sides";
+import { formatLabel, isCut, isPractice, showsScore, sideCount, sideOf, sidesTitle, winnerSide } from "./sides";
 
 function shortDate(iso) {
   if (!iso) return "";
@@ -23,11 +23,13 @@ export default function MatchRow({ match: m, nameOf, me = null }) {
   const [a, b] = meFirst ? [m.score1 ?? 0, m.score2 ?? 0] : [m.score2 ?? 0, m.score1 ?? 0];
   const finished = m.status === "finished";
   const practice = isPractice(m);
+  const cut = isCut(m);
   const won = mine && finished && winnerSide(m) === mySide;
   const sub = [
     m.discipline !== "pool" && DISCIPLINES[m.discipline],
     formatLabel(m),
     practice && MODES.practice,
+    cut && "Cortada",
     !finished && "En curso",
   ].filter(Boolean);
 
@@ -36,7 +38,7 @@ export default function MatchRow({ match: m, nameOf, me = null }) {
       <Link className="list-row" to={!finished && mine ? `/partida/${m.id}/control` : `/partida/${m.id}`}>
         {mine ? (
           <span className={`result${won ? " result-win" : ""}`}>
-            {!finished ? <span className="live-dot" title="En curso" /> : practice ? "–" : won ? "G" : "P"}
+            {!finished ? <span className="live-dot" title="En curso" /> : practice || cut ? "–" : won ? "G" : "P"}
           </span>
         ) : null}
         <span className="list-row-main">

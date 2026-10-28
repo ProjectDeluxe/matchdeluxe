@@ -7,8 +7,34 @@ import { addClubMemberByPhone, createMyClub, logMatchResult } from "../services/
 import { useAuth } from "../context/AuthContext";
 import { Link } from "react-router-dom";
 import { useMatches } from "../context/MatchContext";
+import { usePlayers } from "../context/PlayerContext";
 import { useLiveReload } from "../context/useLiveReload";
+import { sidesTitle } from "../partidas/sides";
 import "./Clubs.css";
+
+// Partidas abiertas del club: el dueño o el staff cortan las que quedaron colgadas (ROADMAP 6.21)
+function OpenMatches({ club, matches, nameOf, onCut }) {
+  if (matches.length === 0) return null;
+  const tableOf = (m) => club.tables.find((t) => t.id === m.table_id)?.label;
+  const since = (m) => new Date(m.started_at).toLocaleString("es-AR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+
+  return (
+    <div className="club-socios">
+      <h3>Partidas en curso</h3>
+      <ul className="tables-list">
+        {matches.map((m) => (
+          <li key={m.id} className="table-row">
+            <span>
+              <Link to={`/partida/${m.id}`}>{sidesTitle(m, nameOf)}</Link>
+              <span className="muted"> · {[tableOf(m), `desde ${since(m)}`].filter(Boolean).join(" · ")}</span>
+            </span>
+            <button className="table-copy" onClick={() => onCut(m)}>cortar</button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
 
 // Partido ya jugado, sin mesa ni cámara (solo socios del club)
 function LogMatchForm({ club, players, onSubmit }) {
@@ -122,7 +148,9 @@ function SociosSection({ club, rows, onAction }) {
 // Abrir/cerrar una mesa y su QR se manejan desde Nueva partida.
 export default function Clubs() {
   const { account, refreshAccount } = useAuth();
-  const { reloadMatches } = useMatches();
+  const { matches, reloadMatches, cutMatch } = useMatches();
+  const { players } = usePlayers();
+  const nameOf = (id) => players.find((p) => p.id === id)?.name ?? "Jugador";
   const isAdmin = !!account?.is_admin;
   const myClubIds = (account?.clubs ?? []).map((c) => c.id);
   const roleIn = (clubId) => (account?.clubs ?? []).find((c) => c.id === clubId)?.role;
@@ -168,6 +196,17 @@ export default function Clubs() {
 
   // Pedidos para sumarse y aceptaciones aparecen sin recargar (6.18)
   useLiveReload(["club_players"], () => loadSocios(visibleKey.split(",")), { enabled: !!visibleKey });
+
+  async function handleCut(m) {
+    if (!window.confirm(`¿Cortar ${sidesTitle(m, nameOf)}? Queda terminada, sin ganador, y no cuenta en el perfil de nadie.`)) return;
+    try {
+      await cutMatch(m.id);
+      setError(null);
+      setNotice("Partida cortada.");
+    } catch (e) {
+      setError(e.message);
+    }
+  }
 
   async function handleSociosAction(clubId, action) {
     try {
@@ -369,6 +408,13 @@ export default function Clubs() {
                 <button className="btn btn-secondary" type="submit">Dar acceso</button>
               </form>
             )}
+
+            <OpenMatches
+              club={club}
+              matches={matches.filter((m) => m.club_id === club.id && m.status !== "finished")}
+              nameOf={nameOf}
+              onCut={handleCut}
+            />
 
             <SociosSection
               club={club}

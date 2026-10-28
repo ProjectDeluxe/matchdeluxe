@@ -2,13 +2,18 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import QRCode from "react-qr-code";
 import { getMatchById, DISCIPLINES, MODES } from "../services/MatchService";
-import { formatLabel, isPractice, showsScore, sideName, sideNumbers, winnerSide } from "./sides";
+import { formatLabel, isCut, isPractice, showsScore, sideName, sideNumbers, winnerSide } from "./sides";
 import { supabase } from "../supabaseClient";
+import { useAuth } from "../context/AuthContext";
+import { useMatches } from "../context/MatchContext";
 import "./Partida.css";
 
 export default function Partida() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { account } = useAuth();
+  const { cutMatch } = useMatches();
+  const [cutError, setCutError] = useState(null);
 
   const [match, setMatch] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -47,6 +52,18 @@ export default function Partida() {
   const scored = showsScore(match); // pool y práctica van sin marcador (ROADMAP 6.15)
   const people = [p1, p2, ...(match.teammates ?? []).map((t) => t.player)].filter(Boolean);
   const nameOf = (pid) => people.find((p) => p.id === pid)?.name ?? "Jugador";
+  // El dueño o el staff del club (o el admin) cortan una partida que quedó abierta (ROADMAP 6.21)
+  const canCut = !finished && (!!account?.is_admin || (account?.clubs ?? []).some((c) => c.id === match.club_id));
+
+  async function handleCut() {
+    if (!window.confirm("¿Cortar la partida? Queda terminada, sin ganador, y no cuenta en el perfil de nadie.")) return;
+    try {
+      await cutMatch(match.id);
+      setCutError(null);
+    } catch (e) {
+      setCutError(e.message);
+    }
+  }
 
   return (
     <div className="partida-pc">
@@ -114,8 +131,16 @@ export default function Partida() {
             Ganó {sideName(match, winnerSide(match), nameOf)}
           </div>
         )}
-        {finished && isPractice(match) && <div className="winner-banner">Práctica terminada</div>}
+        {finished && isCut(match) && <div className="winner-banner">El club cortó la partida</div>}
+        {finished && isPractice(match) && !isCut(match) && <div className="winner-banner">Práctica terminada</div>}
       </div>
+
+      {cutError && <p className="error">{cutError}</p>}
+      {canCut && (
+        <button className="btn btn-secondary back-btn" onClick={handleCut}>
+          Cortar partida
+        </button>
+      )}
 
       <button className="btn btn-secondary back-btn" onClick={() => navigate("/partida")}>
         ← Volver

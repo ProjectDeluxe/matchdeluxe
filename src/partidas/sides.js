@@ -39,6 +39,9 @@ export function winnerSide(match) {
 
 export const isPractice = (match) => match.mode === "practice";
 
+// Cortada por el club (o, más adelante, por tiempo): sin ganador y no cuenta (ROADMAP 6.21)
+export const isCut = (match) => !!match.cut_reason;
+
 // Solo el ping pong de partido y de dos lados lleva marcador; el resto va a ganador
 export const showsScore = (match) => match.discipline === "ping_pong" && !isPractice(match) && sideCount(match) === 2;
 

@@ -643,6 +643,19 @@ Fase 3 cerrada: planes y límites (6.3), modelo de cuentas (6.4), vivo y repetic
   - Opcional: recomprimir los 18 clips que ya están en el bucket.
   - Si el uso crece: pasar el video a Cloudflare R2 (no cobra la descarga, ver 6.19), contra pagar Supabase Pro a US$25 por mes.
 
+### 6.21 Cortar partidas que quedan abiertas (pedido de Agus, 2026-10-26)
+
+- **Problema:** una partida puede quedar abierta para siempre si nadie la termina (se van de la mesa, se cierra el celu). Ocupa la mesa y aparece como "En curso" en todas las listas.
+- **Qué se hizo:**
+  - El dueño o el staff del club (y el admin) pueden **cortar** una partida de su club: en Mi club, una lista nueva "Partidas en curso" (con mesa y desde cuándo) con el botón "cortar", y un botón "Cortar partida" en la pantalla de la partida.
+  - Una partida cortada queda terminada, **sin ganador**, y **no cuenta** en jugadas ni ganadas (como la práctica). En el historial dice "Cortada", y en la partida, "El club cortó la partida". La mesa queda libre sola (el trigger de siempre al terminar).
+  - Migración `supabase/migrations/2026-10-26-cortar-partidas.sql` (idempotente, también al final de `supabase-schema.sql`): columnas `matches.cut_reason` (`club` | `auto`) y `matches.cut_by`. El trigger `guard_matches` solo deja cortar al club de la partida o al admin, y anota quién fue.
+  - Una partida suelta (sin club) no la puede cortar ningún club; la siguen terminando sus jugadores o quien la creó.
+- **Para pasar a producción:** correr la migración **antes** del push. Sin ella, "cortar" da error (falta la columna).
+- **Pendiente:**
+  - Probar: arrancar una partida en una mesa, cortarla desde Mi club con la cuenta del club, y ver que la mesa queda libre y que no suma en el perfil de los jugadores.
+  - **Corte automático (propuesta, a definir con Agus):** un cron (como `api/cron/expire-clips.js`) que cada 15 min corta con `cut_reason = 'auto'` las partidas activas con más de X horas sin cambios. Falta decidir X (¿3 h?), si cuenta desde que arrancó o desde el último punto (hoy no hay columna de "último cambio": habría que sumar `updated_at`), y si lo elige cada club.
+
 ## 7. Próximo paso concreto
 
 **Actualizado 2026-10-18:** Fases 1, 2 y 3 cerradas (lo que queda abierto de la 3, incluido el cobro, en 6.8). Siguiente: Fase 4, arrancando por el paso 1 de 6.9 (bucket privado y links firmados), que ya está en producción y probado. El paso 2 (links firmados por el servidor y descarga según plan) también está en producción y funciona. El paso 3 (publicar y despublicar) también está en producción y probado. El paso 4 (página de clip compartible, `/c/:id`, con vista previa para WhatsApp) también está en producción y probado (6.9). El paso 5 (feed de clips públicos y Reportar) también está en producción y probado (6.9). **Fase 4 cerrada (2026-10-18).** Rediseño visual hecho, en producción y probado (6.10). "Escanear QR" dentro de la app y los íconos para instalarla (6.7) también en producción y probados. En iPhone la cámara del celu sigue abriendo Safari: se escanea desde la app; la app nativa queda para más adelante. Siguiente: la Fase 5.

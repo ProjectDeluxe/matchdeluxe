@@ -5,7 +5,7 @@ import { useMatches } from "../context/MatchContext";
 import { supabase } from "../supabaseClient";
 import { usePlan } from "../plan/usePlan";
 import { planLimitMessage } from "../services/PlanService";
-import { isPractice, showsScore, sideCount, sideIds, sideName, sideNumbers, winnerSide } from "./sides";
+import { isCut, isPractice, showsScore, sideCount, sideIds, sideName, sideNumbers, winnerSide } from "./sides";
 import "./PartidaControl.css";
 
 export default function PartidaControl() {
@@ -239,7 +239,8 @@ export default function PartidaControl() {
       )}
 
       {/* Ganador */}
-      {finished && practice && <div className="ctrl-winner">Práctica terminada</div>}
+      {finished && isCut(match) && <div className="ctrl-winner">El club cortó la partida</div>}
+      {finished && practice && !isCut(match) && <div className="ctrl-winner">Práctica terminada</div>}
       {finished && winnerSide(match) && (
         <div className="ctrl-winner">
           Ganó {sideName(match, winnerSide(match), nameOf)}

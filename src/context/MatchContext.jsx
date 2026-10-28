@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState } from "react";
-import { createMatch, setMatchWinner, getMatches } from "../services/MatchService";
+import { createMatch, setMatchWinner, cutMatchById, getMatches } from "../services/MatchService";
 import { useLiveReload } from "./useLiveReload";
 
 const MatchContext = createContext();
@@ -26,6 +26,11 @@ export function MatchProvider({ children }) {
     await loadMatches();
   }
 
+  async function cutMatch(matchId) {
+    await cutMatchById(matchId);
+    await loadMatches();
+  }
+
   useEffect(() => {
     loadMatches();
   }, []);
@@ -42,6 +47,7 @@ export function MatchProvider({ children }) {
         loading,
         startMatch,
         finishMatch,
+        cutMatch,
         reloadMatches: loadMatches,
       }}
     >

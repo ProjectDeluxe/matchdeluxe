@@ -98,6 +98,25 @@ export async function finishMatchById(matchId, winnerId) {
   return data;
 }
 
+// El dueño o el staff del club cortan una partida que quedó abierta: termina sin
+// ganador y no cuenta en jugadas ni ganadas (ROADMAP 6.21). La base anota quién fue.
+export async function cutMatchById(matchId) {
+  const { data, error } = await supabase
+    .from("matches")
+    .update({
+      winner_id: null,
+      status: "finished",
+      finished_at: new Date().toISOString(),
+      cut_reason: "club",
+    })
+    .eq("id", matchId)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
 // Manda un comando desde el celular hacia la PC
 // tipos: 'save_clip' | 'mark_moment' | 'score_update' | 'end_match'
 export async function sendCommand(matchId, type, payload = {}) {
